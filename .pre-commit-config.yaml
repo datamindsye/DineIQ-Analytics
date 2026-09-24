@@ -1,0 +1,41 @@
+# Pre-commit configuration for DineIQ Analytics team repository
+# Learn more: https://pre-commit.com
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(data/|apps/web/dist/)
+      - id: end-of-file-fixer
+        exclude: ^(data/|apps/web/dist/)
+      - id: check-yaml
+        args: [--unsafe]
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.10
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: oxlint
+        name: oxlint (frontend)
+        entry: npx --prefix apps/web oxlint
+        language: system
+        files: ^apps/web/src/.*\.(ts|tsx)$
+        pass_filenames: false
+
+      - id: web-build
+        name: web-build (typecheck & build)
+        entry: npm --prefix apps/web run build
+        language: system
+        files: ^apps/web/src/.*\.(ts|tsx|css|html)$
+        pass_filenames: false

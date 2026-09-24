@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (Lint & Test)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt ruff pytest pytest-asyncio
+
+      - name: Run Ruff Linter
+        run: ruff check .
+
+      - name: Run Ruff Formatter Check
+        run: ruff format --check .
+
+      - name: Run Tests
+        run: pytest tests/
+
+  frontend:
+    name: Frontend (Lint & Build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Run Oxlint
+        run: npx oxlint
+
+      - name: Run Typecheck & Build
+        run: npm run build
