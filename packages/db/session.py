@@ -19,12 +19,29 @@ def get_engine():
     """Retrieve or initialize the SQLAlchemy engine."""
     global _engine
     if _engine is None:
-        _engine = create_engine(
-            settings.DATABASE_URL,
-            pool_pre_ping=True,
-            echo=settings.DEBUG and settings.ENVIRONMENT == "development",
-        )
+        engine_kwargs = {
+            "echo": settings.DEBUG and settings.ENVIRONMENT == "development",
+            "pool_pre_ping": settings.DB_POOL_PRE_PING,
+        }
+        if not settings.DATABASE_URL.startswith("sqlite"):
+            engine_kwargs.update(
+                {
+                    "pool_size": settings.DB_POOL_SIZE,
+                    "max_overflow": settings.DB_MAX_OVERFLOW,
+                    "pool_timeout": settings.DB_POOL_TIMEOUT,
+                }
+            )
+        _engine = create_engine(settings.DATABASE_URL, **engine_kwargs)
     return _engine
+
+
+def reset_engine() -> None:
+    """Reset the engine and session factory (useful for testing)."""
+    global _engine, _session_factory
+    if _engine is not None:
+        _engine.dispose()
+    _engine = None
+    _session_factory = None
 
 
 def get_session_factory() -> sessionmaker:
