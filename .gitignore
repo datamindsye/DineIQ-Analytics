@@ -49,6 +49,10 @@ apps/web/.vite/
 # Data Directories (keep structure, ignore generated datasets)
 data/snapshots/*
 !data/snapshots/.gitkeep
+data/cleaned/*
+!data/cleaned/.gitkeep
+data/quarantine/*
+!data/quarantine/.gitkeep
 data/marts/*
 !data/marts/.gitkeep
 data/artifacts/*
