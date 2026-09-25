@@ -111,6 +111,35 @@ npm run dev
 ```
 Open your browser at [http://localhost:5173](http://localhost:5173).
 
+### 4. Synthetic Dataset Generation & Data Quality Pipeline
+
+DineIQ Analytics includes a deterministic synthetic dataset generator and an automated data quality and cleaning engine supporting dual independent analytical pipelines:
+
+#### Step A: Generate Synthetic Benchmark Dataset
+Generate the 11 business domain tables (1.31M raw records featuring 17 realistic complexity patterns) using a fixed seed:
+```bash
+# Generate competition benchmark profile (default seed: 42)
+python -m packages.common.generator.cli --profile competition --snapshot-id competition_benchmark_v1
+```
+Available profiles: `small` (test), `medium` (staging), `competition` (1M+ rows benchmark). Snapshots are stored in `data/snapshots/<snapshot_id>/`.
+
+#### Step B: Profile and Clean the Dataset
+Run data quality profiling, quarantine defective records, and export clean Parquet partitions:
+```bash
+# Profile only (inspect schema, nulls, duplicates, and financial formula health)
+python -m packages.common.quality.cli --snapshot-dir data/snapshots/competition_benchmark_v1 --profile-only
+
+# Execute full profiling, defect quarantine isolation, and clean Parquet export
+python -m packages.common.quality.cli --snapshot-dir data/snapshots/competition_benchmark_v1 --cleaned-dir data/cleaned --quarantine-dir data/quarantine
+```
+
+#### Storage Architecture & Data Safety
+- **Raw Snapshots**: `data/snapshots/<snapshot_id>/` (immutable source of truth)
+- **Clean Parquet**: `data/cleaned/<snapshot_id>/` (authoritative starting point for Spark and Python pipelines)
+- **Quarantine Store**: `data/quarantine/<snapshot_id>/` (isolated anomalies with defect lineage)
+- **Temporal Split**: `data/cleaned/<snapshot_id>/split_manifest.json` (4-way chronological split: TRAIN 66.66%, VALIDATION 16.61%, TEST 8.23%, UNSEEN_COMPARISON 8.49%)
+- **Git Safety Guarantee**: All generated Parquet files (`data/snapshots/*`, `data/cleaned/*`, `data/quarantine/*`, `data/marts/*`) are strictly excluded via `.gitignore`. Folder structures are preserved using tracked `.gitkeep` markers.
+
 ---
 
 ## Code Quality & Developer Tooling
@@ -176,7 +205,7 @@ Every pull request and push to `main` triggers automated CI checks (`.github/wor
 ## Team Workflow & Git Conventions
 
 1. **Branching**: Create feature branches from `main` (e.g. `feat/menu-analytics`, `feat/customer-rfm`).
-2. **Never Commit Secrets or Generated Datasets**: Ensure `.env`, `data/snapshots/*`, `data/marts/*`, and `data/artifacts/*` are never added to Git.
+2. **Never Commit Secrets or Generated Datasets**: Ensure `.env`, `data/snapshots/*`, `data/cleaned/*`, `data/quarantine/*`, `data/marts/*`, and `data/artifacts/*` are never added to Git.
 3. **Commit Hygiene**: Run `pre-commit run --all-files` before pushing. Write clear, descriptive commit messages.
 4. **Code Review**: Open a Pull Request to `main`. Ensure all CI checks pass before requesting reviews.
 
@@ -189,3 +218,14 @@ To run PostgreSQL locally with Docker:
 docker run --name dineiq-postgres -e POSTGRES_USER=dineiq_user -e POSTGRES_PASSWORD=dineiq_password -e POSTGRES_DB=dineiq_analytics -p 5432:5432 -d postgres:16
 ```
 Or use a local native PostgreSQL installation matching the credentials in `.env`.
+
+---
+
+## Documentation & Architecture References
+
+- **AI Usage Declaration**: [AI_USAGE.md](AI_USAGE.md) (governance and human oversight statement)
+- **Authoritative Data Dictionary**: [docs/data-dictionary.md](docs/data-dictionary.md) (domain schemas and financial formulas)
+- **Dataset Forensic Inspection Report**: [docs/reports/dataset_inspection_report.md](docs/reports/dataset_inspection_report.md) (11-table Parquet audit)
+- **Development Log**: [docs/development_log.md](docs/development_log.md) (chronological record of foundation phases)
+- **Data Contract & Generator Architecture**: [docs/specs/0003-dataset-contract-and-generation-strategy/](docs/specs/0003-dataset-contract-and-generation-strategy/index.md)
+- **Data Quality & Cleaning Architecture**: [docs/specs/0004-data-quality-and-cleaning/](docs/specs/0004-data-quality-and-cleaning/index.md)
