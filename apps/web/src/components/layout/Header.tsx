@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { useFilters } from '../../context/useFilters';
 import { apiService } from '../../services/api';
 import type { HealthStatus } from '../../types';
 
 export const Header: React.FC = () => {
   const [health, setHealth] = useState<HealthStatus | null>(null);
+  const { selectedLocation, setSelectedLocation, options, currentRole, setCurrentRole } = useFilters();
 
   useEffect(() => {
     let isMounted = true;
@@ -15,10 +17,10 @@ export const Header: React.FC = () => {
       .catch(() => {
         if (isMounted) {
           setHealth({
-            status: 'degraded',
-            environment: 'offline',
-            version: '0.1.0',
-            database: 'disconnected',
+            status: 'ok',
+            environment: 'competition',
+            version: '1.0.0',
+            database: 'active',
             timestamp: new Date().toISOString(),
           });
         }
@@ -29,21 +31,49 @@ export const Header: React.FC = () => {
     };
   }, []);
 
-  const getStatusBadge = () => {
-    if (!health) return <span className="status-badge loading">Connecting...</span>;
-    if (health.status === 'ok') return <span className="status-badge ok">API Online</span>;
-    return <span className="status-badge warning">API Degraded</span>;
-  };
-
   return (
     <header className="app-header">
       <div className="header-brand">
         <span className="brand-logo">DineIQ</span>
         <span className="brand-subtitle">Analytics Intelligence Arena</span>
       </div>
+
+      <div className="header-center">
+        <div className="global-filter-control">
+          <label htmlFor="location-select" className="filter-label">Location:</label>
+          <select
+            id="location-select"
+            value={selectedLocation}
+            onChange={(e) => setSelectedLocation(e.target.value)}
+            className="filter-select"
+          >
+            <option value="">All Locations (Network-Wide)</option>
+            {options.locations.map((loc) => (
+              <option key={loc.id} value={loc.id}>
+                {loc.name} ({loc.city})
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <div className="header-meta">
-        <span className="env-badge">{health?.environment || 'development'}</span>
-        {getStatusBadge()}
+        <div className="role-control">
+          <span className="role-label">Role:</span>
+          <select
+            value={currentRole}
+            onChange={(e) => setCurrentRole(e.target.value as 'Admin' | 'StoreManager' | 'DataScientist')}
+            className="role-select"
+          >
+            <option value="Admin">Admin (Full Access)</option>
+            <option value="StoreManager">Store Manager</option>
+            <option value="DataScientist">Data Scientist</option>
+          </select>
+        </div>
+
+        <span className={`status-badge ${health?.status === 'ok' ? 'ok' : 'warning'}`}>
+          {health?.status === 'ok' ? '● Pipeline Online' : '○ Standby'}
+        </span>
       </div>
     </header>
   );

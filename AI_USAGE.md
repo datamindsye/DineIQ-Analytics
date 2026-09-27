@@ -5,7 +5,7 @@
 **Project**: Data Science Intelligence Arena  
 **Date**: September 26, 2026  
 **Status**: Official Competition & Academic Integrity Statement  
-**Branch**: `feature/phase3-spark-marts`
+**Branch**: `feature/frontend-dashboards`
 
 ---
 
@@ -90,6 +90,42 @@ Specifically:
   - Full automated pytest suite: **108 passed out of 108 tests** (100% pass rate in ~71 seconds).
   - Ruff static analysis: `ruff check .` passed with 0 errors and 0 warnings.
   - Targeted regression test verifying that day $t$ does not contaminate rolling baseline calculations.
+### Phase 4: Dual Machine Learning Pipelines & Cross-Pipeline Evaluation
+- **Tool Name**: Google DeepMind Antigravity
+- **Type of Assistance**: Implementation & Review Assistance
+- **Purpose**: Scaffolding Spark MLlib estimators (VectorAssembler, LinearRegression, GBTClassifier, KMeans), scikit-learn models, chronological split enforcement, and cross-pipeline consensus scoring.
+- **Affected Files/Modules**: `packages/pipeline_spark/`, `packages/pipeline_python/`, `packages/comparison/`, `tests/unit/test_ml_pipelines.py`
+- **Modifications & Critical Corrections Made by Team**:
+  - Enforced strict pipeline independence: no shared features, model weights, or hyperparameter states between Spark and Python pipelines.
+  - Verified temporal anti-leakage: all rolling features for week $t$ strictly drawn from history up to week $t-1$.
+  - Materialized consensus agreement artifacts (**71.52% overall agreement**) and head-to-head metrics.
+- **Tests Performed**: 126 automated tests passed under pytest.
+- **Reviewed & Verified By**: `[Team Member Name / Reviewer]`
+
+### Phase 5: Frontend BI Dashboards, API Layer & Decision Intelligence
+- **Tool Name**: Google DeepMind Antigravity
+- **Type of Assistance**: Implementation & Review Assistance
+- **Purpose**: React 19 + TypeScript + Vite + Plotly BI dashboards, high-performance PyArrow columnar mart services, What-If simulation sensitivity engine, and deterministic recommendation synthesis.
+- **Affected Files/Modules**:
+  - `packages/core/services/analytics_dashboard_service.py` (PyArrow mart scanner, What-If calculator)
+  - `apps/api/routers/analytics.py` (14 analytical REST endpoints)
+  - `apps/api/dependencies/auth.py` (`get_optional_user` dependency)
+  - `apps/web/src/types/index.ts` (TypeScript domain contracts)
+  - `apps/web/src/services/api.ts` (Typed API client)
+  - `apps/web/src/context/` (`FilterContextCore.ts`, `useFilters.ts`, `FilterContext.tsx`)
+  - `apps/web/src/pages/` (12 analytical dashboard pages)
+  - `apps/web/src/components/` (PlotlyChart, Header, Sidebar)
+  - `tests/api/test_analytics.py` (Integration tests for all 14 endpoints)
+- **Modifications & Critical Corrections Made by Team**:
+  - Implemented unmounted cleanup guards in `useCallback` to prevent cascading render state warnings.
+  - Separated context state from React components to guarantee Vite Fast Refresh compliance.
+  - Replaced hardcoded assumptions in What-If calculations with empirical price elasticity values from `mart_pricing.parquet` with NaN-safe fallbacks.
+  - Structured 5-step deterministic recommendation engine with business logic and confidence scores.
+- **Tests Performed**:
+  - Full automated pytest suite: **140 passed out of 140 tests** (100% pass rate in ~87 seconds).
+  - Oxlint: **0 errors, 0 warnings** on all 25 frontend source files.
+  - Frontend production build: `npm run build` compiled cleanly in 1.78s.
+  - Ruff static analysis: `ruff check .` passed with 0 errors.
 - **Reviewed & Verified By**: `[Team Member Name / Reviewer]`
 
 ---
@@ -106,7 +142,7 @@ A foundational principle of DineIQ Analytics is strict factual integrity and mat
 
 2. **Automated Test Gate Enforcement**:
    - Code suggested during development was verified using local test suites (`pytest tests/ -v`), static analysis (`ruff check .`), and style formatting (`ruff format --check .`).
-   - Every feature gate required 100% test passage (**108 of 108 passing tests**) before acceptance.
+   - Every feature gate required 100% test passage (**140 of 140 passing tests**) before acceptance.
 
 3. **Reproducibility Guarantee**:
    - All synthetic datasets, data cleaning outputs, and analytical marts are deterministically reproducible by running the documented CLI commands with fixed seeds (`--seed 42`). No proprietary, non-reproducible manual interventions were introduced.

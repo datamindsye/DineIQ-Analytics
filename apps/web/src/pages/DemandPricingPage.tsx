@@ -1,0 +1,205 @@
+import React, { useEffect, useState } from 'react';
+import { PlotlyChart } from '../components/charts/PlotlyChart';
+import { useFilters } from '../context/useFilters';
+import { apiService } from '../services/api';
+import type { DemandPricingResponse } from '../types';
+
+export const DemandPricingPage: React.FC = () => {
+  const { selectedLocation } = useFilters();
+  const [data, setData] = useState<DemandPricingResponse | null>(null);
+  const [selectedItem, setSelectedItem] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    apiService
+      .getDemandPricing({
+        menu_item_id: selectedItem || undefined,
+        restaurant_id: selectedLocation || undefined,
+      })
+      .then((res) => {
+        if (isMounted) setData(res);
+      })
+      .catch((err) => {
+        if (isMounted) setError(err instanceof Error ? err.message : 'Failed loading demand & pricing');
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedLocation, selectedItem]);
+
+  // Forecast vs Actuals curve
+  const curve = data?.demand_forecast_curve || [];
+  const forecastData = [
+    {
+      x: curve.map((c) => c.week_start_date),
+      y: curve.map((c) => c.actual_quantity),
+      type: 'scatter' as const,
+      mode: 'lines+markers' as const,
+      name: 'Actual Sold Quantity',
+      line: { color: '#38bdf8', width: 2 },
+    },
+    {
+      x: curve.map((c) => c.week_start_date),
+      y: curve.map((c) => c.predicted_quantity),
+      type: 'scatter' as const,
+      mode: 'lines' as const,
+      name: 'MLlib Forecast (Predicted)',
+      line: { color: '#10b981', dash: 'dash' as const, width: 2 },
+    },
+  ];
+
+  const forecastLayout = {
+    title: { text: 'Demand Forecasting: Actual Sales vs Spark MLlib Predictions Across Splits', font: { size: 15, color: '#f8fafc' } },
+    xaxis: { title: { text: 'ISO Week Starting Date', font: { color: '#94a3b8' } }, gridcolor: '#334155' },
+    yaxis: { title: { text: 'Units Demanded', font: { color: '#94a3b8' } }, gridcolor: '#334155' },
+    legend: { font: { color: '#94a3b8' } },
+  };
+
+  // Elasticity Pie
+  const elDist = data?.elasticity_distribution || {};
+  const elChartData = [
+    {
+      values: Object.values(elDist),
+      labels: Object.keys(elDist),
+      type: 'pie' as const,
+      hole: 0.5,
+      marker: {
+        colors: Object.keys(elDist).map((cls) => {
+          if (cls === 'Elastic') return '#f59e0b';
+          if (cls === 'Inelastic') return '#10b981';
+          return '#38bdf8';
+        }),
+      },
+    },
+  ];
+
+  const elChartLayout = {
+    title: { text: 'Price Sensitivity Class Distribution', font: { size: 15, color: '#f8fafc' } },
+    legend: { font: { color: '#94a3b8' } },
+    margin: { l: 20, r: 20, t: 40, b: 20 },
+  };
+
+  return (
+    <div className="page-container">
+      <div className="page-header">
+        <h1 className="page-title">Demand Forecasting & Price Elasticity</h1>
+        <p className="page-description">
+          Gradient boosted regression demand trajectories and empirical price elasticity estimates.
+        </p>
+      </div>
+
+      {error && <div className="alert-box error">{error}</div>}
+
+      <div className="filter-bar">
+        <div className="filter-group">
+          <input
+            type="text"
+            placeholder="Filter by Dish ID (e.g. DISH-0001)..."
+            value={selectedItem}
+            onChange={(e) => setSelectedItem(e.target.value)}
+            className="search-input"
+          />
+          {selectedItem && (
+            <button className="btn btn-secondary" onClick={() => setSelectedItem('')}>
+              Clear Dish Filter
+            </button>
+          )}
+        </div>
+
+        <div className="filter-group">
+          <a
+            href={apiService.getExportUrl('spark/ml_demand_forecast.parquet')}
+            className="btn btn-secondary"
+            download
+          >
+            Export Forecast CSV
+          </a>
+          <a
+            href={apiService.getExportUrl('spark/mart_pricing.parquet')}
+            className="btn btn-secondary"
+            download
+          >
+            Export Elasticity CSV
+          </a>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', marginBottom: '24px' }}>
+        <div className="card chart-card">
+          <PlotlyChart data={forecastData} layout={forecastLayout} />
+        </div>
+        <div className="card chart-card">
+          <PlotlyChart data={elChartData} layout={elChartLayout} />
+        </div>
+      </div>
+
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <div>
+            <h2 className="card-title" style={{ margin: 0 }}>Price Elasticity Observations</h2>
+            <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+              Note: Price elasticity estimates reflect historical demand responses during price adjustments and do not constitute causal proof.
+            </p>
+          </div>
+        </div>
+
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Item ID</th>
+                <th>Item Name</th>
+                <th>Current Price</th>
+                <th>Pre Price</th>
+                <th>Post Price</th>
+                <th>Pre Volume</th>
+                <th>Post Volume</th>
+                <th>Elasticity (ε)</th>
+                <th>Sensitivity Class</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '30px' }}>Loading price elasticity...</td>
+                </tr>
+              ) : data?.pricing_items.map((prc, idx) => (
+                <tr key={`${prc.source_menu_item_id}-${idx}`}>
+                  <td><code>{prc.source_menu_item_id}</code></td>
+                  <td><strong>{prc.item_name}</strong></td>
+                  <td>${Number(prc.base_price).toFixed(2)}</td>
+                  <td>${Number(prc.pre_price).toFixed(2)}</td>
+                  <td>${Number(prc.post_price).toFixed(2)}</td>
+                  <td>{Number(prc.pre_quantity).toLocaleString()}</td>
+                  <td>{Number(prc.post_quantity).toLocaleString()}</td>
+                  <td>
+                    <strong>{prc.elasticity !== null ? Number(prc.elasticity).toFixed(3) : 'N/A'}</strong>
+                  </td>
+                  <td>
+                    <span
+                      className={`badge-tag ${
+                        prc.sensitivity_class === 'Inelastic'
+                          ? 'badge-profit'
+                          : prc.sensitivity_class === 'Elastic'
+                          ? 'badge-hidden'
+                          : 'badge-volume'
+                      }`}
+                    >
+                      {prc.sensitivity_class || 'Standard'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};

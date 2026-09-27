@@ -71,6 +71,30 @@ def get_current_user(
     return user
 
 
+def get_optional_user(
+    token: Annotated[str | None, Depends(oauth2_scheme)],
+    db: Annotated[Session, Depends(get_db)],
+) -> User | None:
+    """Retrieve user from token if present, returning None if unauthenticated."""
+    if not token:
+        return None
+    try:
+        payload = decode_access_token(
+            token=token,
+            secret_key=settings.SECRET_KEY,
+            algorithm=settings.ALGORITHM,
+        )
+        username: str | None = payload.get("sub")
+        if not username:
+            return None
+        user = get_user_by_username(db, username=username)
+        if user and user.is_active:
+            return user
+    except Exception:
+        return None
+    return None
+
+
 def require_roles(*allowed_roles: str) -> Callable[[User], User]:
     """Dependency factory enforcing that the authenticated user possesses at least one allowed role."""
 

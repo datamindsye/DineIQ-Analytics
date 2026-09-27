@@ -216,30 +216,110 @@ The Phase 3 analytical pipeline executes natively in Apache Spark 4.2.0, consumi
 - **Phase 1: Foundation**: Modular monolith structure, FastAPI backend, PostgreSQL operational schema, JWT/RBAC security, audit logging.
 - **Phase 2: Data Foundation**: Synthetic dataset generator (1.31M rows), data quality profiling, defect quarantine isolation, clean Parquet snapshot.
 - **Phase 3: Data Engineering & Spark Marts**: Spark session factory, schema mapping, joins, 12 analytical marts, rolling baseline correction, regression tests, and physical Parquet materialization (741,310 records).
+- **Phase 4: Dual Machine Learning & Arena Evaluation**: Independent Spark MLlib and Python scikit-learn ML pipelines, chronological temporal split contract, zero future leakage enforcement, cross-pipeline consensus scoring (**71.52% overall agreement**), and head-to-head scorecard.
+- **Phase 5: Frontend BI Dashboards & Decision Intelligence**: Complete 12-domain BI analytics platform in React 19 + TypeScript + Vite + Plotly, high-performance PyArrow columnar mart services, 14 FastAPI REST endpoints, What-If scenario simulation engine, and deterministic recommendation synthesis.
 
-### In Progress / Upcoming (Next Phases)
-- **Phase 4A**: Machine Learning Feature Engineering (leakage-free feature matrices).
-- **Phase 4B**: Apache Spark MLlib Models (distributed demand forecasting, wastage classification, churn risk).
-- **Phase 4C**: Independent Python ML Models (scikit-learn, time-series forecasting, wastage models).
-- **Phase 4D**: Cross-Pipeline Model Evaluation & Comparison against Unseen Split (Dec 2025).
-- **Phase 5**: Decision Intelligence & Recommendations Engine, What-If Scenario Simulations.
-- **Phase 6**: Final FastAPI Analytical Endpoints, Interactive React + Vite + Plotly BI Dashboards.
-- **Phase 7**: Competition Documentation, Demonstration Video, and Submission Package.
+### Upcoming
+- **Phase 6: Production Containerization & Deployment**: Docker Compose, production Nginx reverse proxy, CI/CD pipeline, and final competition submission package.
 
 ---
 
 ## 9. Verification & Code Quality
 
 Current verified status of the repository:
-- **Pytest Automated Tests**: **108 passed out of 108 tests** (100% pass rate in ~71s)
-- **Ruff Static Analysis**: **0 errors, 0 warnings** (`ruff check .` passed)
-- **Ruff Code Formatting**: Verified compliant with project configuration
+- **Pytest Automated Tests**: **140 passed out of 140 tests** (100% pass rate in ~87s)
+- **Oxlint Static Analysis (Frontend)**: **0 errors, 0 warnings** across 25 TypeScript files
+- **Frontend Production Build**: `npm run build` compiles cleanly in ~1.8s
+- **Ruff Static Analysis (Backend)**: **0 errors, 0 warnings** (`ruff check .` passed)
+- **Ruff Code Formatting**: **217 files formatted cleanly** (`ruff format --check .` passed)
 
 ---
 
 ## 10. Execution Instructions
 
-The following commands exist and are runnable in the repository:
+### 0. Quick Start (Windows Single-Click Launcher)
+
+To launch both the FastAPI backend and React frontend concurrently with automatic browser launch:
+
+```bat
+# From repository root in cmd or PowerShell:
+start.bat
+```
+
+Or simply **double-click** `start.bat` in Windows Explorer. This will:
+1. Detect Python virtual environment (`.venv\Scripts\python.exe`) or system Python.
+2. Launch the FastAPI backend on `http://127.0.0.1:8000` in a dedicated terminal.
+3. Launch the Vite frontend on `http://localhost:5173` in a dedicated terminal.
+4. Automatically open your default web browser to `http://localhost:5173/`.
+
+---
+
+### Application URLs & Access Links
+
+| Service / Interface | URL | Description |
+|---|---|---|
+| **Frontend BI Dashboard** | [http://localhost:5173/](http://localhost:5173/) | Main interactive React 19 + Plotly BI analytics platform |
+| **Backend REST API** | [http://127.0.0.1:8000/](http://127.0.0.1:8000/) | FastAPI application root |
+| **API Documentation (Swagger)** | [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) | Interactive Swagger UI testing all 14 analytical endpoints |
+| **Alternative Docs (ReDoc)** | [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc) | Clean OpenAPI reference documentation |
+| **System Health Probe** | [http://127.0.0.1:8000/api/v1/health](http://127.0.0.1:8000/api/v1/health) | API health check & operational database status |
+
+---
+
+### Frontend BI Dashboard Navigation (12 Domains)
+
+Once launched, navigate through the sidebar to access all 12 SRS analytical modules:
+
+1. **Executive Dashboard (`/`)**:
+   - Boston Portfolio Matrix scatter plot (Stars, Cash Cows, Puzzles, Dogs).
+   - High-level KPI cards: Total Net Revenue, Contribution Margin %, Wastage Loss, Churn Rate.
+   - Quick recommendation alert teasers.
+2. **Menu Intelligence (`/menu`)**:
+   - 6-Factor composite scores: Profitability, Velocity, Labor, Complexity, Waste, and Feedback.
+   - Filter by 10 Tricky Flags (e.g., `flag_high_waste_driver`, `flag_low_margin_trap`, `flag_weekend_only`).
+   - Deep-dive dish inspection panel with pantry synergy scores.
+3. **Customer Intelligence (`/customers`)**:
+   - RFM customer segmentation donut chart (`Champions`, `Loyal`, `At Risk`, `Lost`).
+   - Paginated customer churn risk table with ML churn probabilities, RFM scores, and loyalty tiers.
+4. **Sales & Operations (`/sales`)**:
+   - Hourly rush-hour velocity heatmap (Lunch: 11:00-14:00, Dinner: 18:00-21:00).
+   - Dining channel revenue split (Dine-in, Takeout, Drive-Thru, Delivery Direct, Delivery Aggregator).
+   - Location performance leaderboard ranked by net sales and order volume.
+5. **Demand & Pricing (`/demand-pricing`)**:
+   - Actual vs. Predicted daily demand time-series with ML error metrics.
+   - Empirical price elasticity ($\epsilon$) vs contribution margin scatter plot.
+6. **Wastage & Inventory (`/wastage`)**:
+   - Root-cause loss breakdown (Spoilage, Preparation Error, Overproduction, Expired Stock).
+   - Strict dual-path separation: Raw Ingredient stock loss vs. Prepared Dish kitchen scrap.
+   - High-risk inventory items exceeding the $>5\%$ waste cost ratio threshold.
+7. **Promotions & Basket Analysis (`/promotions`)**:
+   - Promotion trap identification: campaigns driving volume spikes while net contribution margin collapses.
+   - Market Basket Analysis: association rule pairings with Support, Confidence, and Lift ($Lift > 1.2$).
+8. **Ratings & Anomalies (`/anomalies`)**:
+   - Daily sales anomaly detector using rolling 14-day leakage-free Z-scores ($|Z| > 2.5$).
+   - Real-time customer review alert stream highlighting negative sentiment and operational defect tags.
+9. **Data Science Arena (`/arena`)**:
+   - Consensus agreement scorecard: **71.52% overall consensus** between Spark MLlib and Python scikit-learn.
+   - Head-to-head performance scorecard across Demand (RMSE/MAE), Wastage (AUC/Recall), and Churn (F1/LogLoss).
+   - Side-by-side model disagreement table inspecting divergence between distributed and single-node pipelines.
+10. **Actionable Recommendations (`/recommendations`)**:
+    - Deterministic 5-step evidence-based recommendation cards across Menu Engineering, Wastage Prevention, and Retention.
+    - Financial impact estimates, implementation effort, confidence levels, and status tracking (`Pending`, `In Progress`, `Implemented`).
+11. **What-If Scenario Simulation (`/what-if`)**:
+    - Interactive sensitivity sliders: Price Adjustment ($\pm 30\%$), Promotion Discount ($\pm 50\%$), and Waste Reduction ($0-80\%$).
+    - Dynamic calculations using empirical price elasticity estimates and baseline margins to forecast volume, revenue, and margin deltas.
+12. **Pipelines & Health (`/health`)**:
+    - Columnar Parquet mart inspection verifying all 12 marts totaling 741,310 precomputed records.
+    - Background pipeline launcher and operational execution history.
+
+> [!NOTE]
+> **Global Filters & Role Simulator**: Use the top header bar to filter data dynamically by restaurant location or switch simulated roles (`Admin`, `StoreManager`, `DataScientist`) to test persona-specific views.
+
+---
+
+### Manual CLI Execution Instructions
+
+If you prefer to run services manually from separate terminal windows:
 
 ### 1. Environment Setup
 ```bash
@@ -252,7 +332,7 @@ cp .env.example .env
 
 ### 2. Run Automated Test Suite
 ```bash
-# Execute full backend and analytical test suite (108 tests)
+# Execute full backend and analytical test suite (140 tests)
 python -m pytest tests/
 
 # Execute targeted mart tests
@@ -266,6 +346,9 @@ ruff check .
 
 # Check formatting
 ruff format --check .
+
+# Check TypeScript / React frontend code quality with Oxlint
+cd apps/web && npx oxlint
 ```
 
 ### 4. Generate Synthetic Benchmark Dataset
@@ -288,25 +371,26 @@ python -m packages.pipeline_spark.runner
 
 ### 7. Run FastAPI Backend Server
 ```bash
-# Start backend API (requires PostgreSQL for persistent operations)
+# Start backend API (serves 14 analytical endpoints + operational endpoints)
 uvicorn apps.api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 - API Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 - Health Probe: [http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health)
+- Executive KPI Endpoint: [http://localhost:8000/api/v1/analytics/executive-summary](http://localhost:8000/api/v1/analytics/executive-summary)
 
-### 8. Run React Frontend Development Server
+### 8. Run React Frontend Development Server & Build
 ```bash
 cd apps/web
-npm install
-npm run dev
-```
 
-### Unimplemented Features Notice
-The following execution workflows are scheduled for subsequent phases and are **NOT IMPLEMENTED YET**:
-- Spark MLlib model training CLI: *NOT IMPLEMENTED YET*
-- Python scikit-learn model training CLI: *NOT IMPLEMENTED YET*
-- Cross-pipeline comparison evaluation runner CLI: *NOT IMPLEMENTED YET*
-- Recommendation generation engine CLI: *NOT IMPLEMENTED YET*
+# Install dependencies
+npm install
+
+# Start local Vite development server
+npm run dev
+
+# Build production bundle
+npm run build
+```
 
 ---
 
