@@ -41,23 +41,18 @@ def build_sales_anomalies_mart_spark(
 
     # 2. 14-day rolling mean and standard deviation per restaurant strictly using prior days (<= t-1)
     rolling_window = (
-        Window.partitionBy("source_restaurant_id")
-        .orderBy("order_date")
-        .rowsBetween(-14, -1)
+        Window.partitionBy("source_restaurant_id").orderBy("order_date").rowsBetween(-14, -1)
     )
 
-    daily_sales = (
-        daily_sales.withColumn(
-            "rolling_mean_revenue",
-            F.round(F.avg("daily_revenue").over(rolling_window), 2),
-        )
-        .withColumn(
-            "rolling_std_revenue",
-            F.coalesce(
-                F.round(F.stddev("daily_revenue").over(rolling_window), 2),
-                F.lit(1.0),
-            ),
-        )
+    daily_sales = daily_sales.withColumn(
+        "rolling_mean_revenue",
+        F.round(F.avg("daily_revenue").over(rolling_window), 2),
+    ).withColumn(
+        "rolling_std_revenue",
+        F.coalesce(
+            F.round(F.stddev("daily_revenue").over(rolling_window), 2),
+            F.lit(1.0),
+        ),
     )
 
     # 3. Compute Z-score (strictly 0.0 when no prior baseline history exists)
@@ -105,9 +100,7 @@ def build_sales_anomalies_mart_spark(
     # 5. Merge restaurant info via broadcast
     mart = daily_sales.join(
         F.broadcast(
-            restaurants_df.select(
-                "source_restaurant_id", "location_name", "city", "dining_type"
-            )
+            restaurants_df.select("source_restaurant_id", "location_name", "city", "dining_type")
         ),
         on="source_restaurant_id",
         how="left",

@@ -22,14 +22,12 @@ def build_peak_analysis_mart_spark(
     """Build Peak Hour and Rush Analysis analytical mart using native PySpark."""
     logger.info("Executing Spark Peak Analysis mart transformation")
 
-    valid_orders = orders_df.filter(F.col("order_status") != "Voided").withColumn(
-        "order_ts", F.to_timestamp(F.col("order_timestamp"))
-    ).withColumn(
-        "day_number", F.dayofweek(F.col("order_timestamp"))
-    ).withColumn(
-        "day_of_week", F.date_format(F.col("order_timestamp"), "EEEE")
-    ).withColumn(
-        "hour_of_day", F.hour(F.col("order_timestamp"))
+    valid_orders = (
+        orders_df.filter(F.col("order_status") != "Voided")
+        .withColumn("order_ts", F.to_timestamp(F.col("order_timestamp")))
+        .withColumn("day_number", F.dayofweek(F.col("order_timestamp")))
+        .withColumn("day_of_week", F.date_format(F.col("order_timestamp"), "EEEE"))
+        .withColumn("hour_of_day", F.hour(F.col("order_timestamp")))
     )
 
     valid_orders.createOrReplaceTempView("spark_temp_peak_orders")
@@ -58,13 +56,15 @@ def build_peak_analysis_mart_spark(
     agg_df = agg_df.withColumn("rush_period", rush_expr)
 
     # Attach restaurant capacity via broadcast join
-    rest_info = F.broadcast(restaurants_df.select(
-        "source_restaurant_id",
-        "location_name",
-        "city",
-        "dining_type",
-        "seating_capacity",
-    ))
+    rest_info = F.broadcast(
+        restaurants_df.select(
+            "source_restaurant_id",
+            "location_name",
+            "city",
+            "dining_type",
+            "seating_capacity",
+        )
+    )
     agg_df = agg_df.join(rest_info, on="source_restaurant_id", how="left")
 
     # Capacity utilization proxy
@@ -78,9 +78,7 @@ def build_peak_analysis_mart_spark(
 
     # Rank peak hours per restaurant
     rest_window = Window.partitionBy("source_restaurant_id").orderBy(F.desc("total_orders"))
-    agg_df = agg_df.withColumn(
-        "restaurant_hour_rank", F.dense_rank().over(rest_window)
-    ).withColumn(
+    agg_df = agg_df.withColumn("restaurant_hour_rank", F.dense_rank().over(rest_window)).withColumn(
         "is_peak_hour", F.col("restaurant_hour_rank") <= 5
     )
 

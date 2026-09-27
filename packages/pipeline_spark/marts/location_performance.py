@@ -79,19 +79,14 @@ def build_location_performance_mart_spark(
     ratings_with_month = ratings_df.withColumn(
         "order_month", F.trunc(F.col("rating_timestamp"), "month")
     )
-    rating_stats = (
-        ratings_with_month.groupBy("source_restaurant_id", "order_month")
-        .agg(
-            F.count("rating_score").alias("total_ratings"),
-            F.round(F.avg("rating_score"), 2).alias("avg_rating"),
-        )
+    rating_stats = ratings_with_month.groupBy("source_restaurant_id", "order_month").agg(
+        F.count("rating_score").alias("total_ratings"),
+        F.round(F.avg("rating_score"), 2).alias("avg_rating"),
     )
     loc_mart = loc_mart.join(rating_stats, on=["source_restaurant_id", "order_month"], how="left")
     loc_mart = loc_mart.withColumn(
         "total_ratings", F.coalesce(F.col("total_ratings"), F.lit(0))
-    ).withColumn(
-        "avg_rating", F.coalesce(F.col("avg_rating"), F.lit(4.0))
-    )
+    ).withColumn("avg_rating", F.coalesce(F.col("avg_rating"), F.lit(4.0)))
 
     # 4. Wastage Costs (Dual path: dish + raw)
     wastage_with_month = wastage_df.withColumn(
@@ -115,7 +110,8 @@ def build_location_performance_mart_spark(
         "raw_ingredient_waste_cost", F.coalesce(F.col("raw_ingredient_waste_cost"), F.lit(0.0))
     )
     loc_mart = loc_mart.withColumn(
-        "total_waste_cost", F.round(F.col("dish_waste_cost") + F.col("raw_ingredient_waste_cost"), 2)
+        "total_waste_cost",
+        F.round(F.col("dish_waste_cost") + F.col("raw_ingredient_waste_cost"), 2),
     ).withColumn(
         "waste_to_revenue_ratio",
         F.when(
@@ -125,15 +121,17 @@ def build_location_performance_mart_spark(
     )
 
     # 5. Attach Restaurant Metadata via broadcast
-    rest_meta = F.broadcast(restaurants_df.select(
-        "source_restaurant_id",
-        "location_name",
-        "city",
-        "state_region",
-        "dining_type",
-        "seating_capacity",
-        "opening_date",
-    ))
+    rest_meta = F.broadcast(
+        restaurants_df.select(
+            "source_restaurant_id",
+            "location_name",
+            "city",
+            "state_region",
+            "dining_type",
+            "seating_capacity",
+            "opening_date",
+        )
+    )
     loc_mart = loc_mart.join(rest_meta, on="source_restaurant_id", how="left")
 
     # Rankings per month
@@ -141,8 +139,6 @@ def build_location_performance_mart_spark(
     month_margin_window = Window.partitionBy("order_month").orderBy(F.desc("contribution_margin"))
     loc_mart = loc_mart.withColumn(
         "revenue_rank", F.dense_rank().over(month_rev_window)
-    ).withColumn(
-        "margin_rank", F.dense_rank().over(month_margin_window)
-    )
+    ).withColumn("margin_rank", F.dense_rank().over(month_margin_window))
 
     return loc_mart

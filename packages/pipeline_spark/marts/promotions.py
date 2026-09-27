@@ -54,15 +54,17 @@ def build_promotions_mart_spark(
     """)
 
     # 3. Attach Promotion Metadata via broadcast join
-    promos_meta = F.broadcast(promotions_df.select(
-        "source_promotion_id",
-        "campaign_name",
-        "discount_type",
-        "discount_value",
-        "start_date",
-        "end_date",
-        "is_misleading",
-    ))
+    promos_meta = F.broadcast(
+        promotions_df.select(
+            "source_promotion_id",
+            "campaign_name",
+            "discount_type",
+            "discount_value",
+            "start_date",
+            "end_date",
+            "is_misleading",
+        )
+    )
 
     mart = promo_stats.join(promos_meta, on="source_promotion_id", how="inner")
 
@@ -75,7 +77,8 @@ def build_promotions_mart_spark(
         (
             (F.col("redemption_count") >= median_redemptions)
             & ((F.col("contribution_margin") <= 0) | (F.col("margin_percentage") < 0.10))
-        ) | (F.col("is_misleading") & (F.col("contribution_margin") < 0)),
+        )
+        | (F.col("is_misleading") & (F.col("contribution_margin") < 0)),
     )
 
     return mart

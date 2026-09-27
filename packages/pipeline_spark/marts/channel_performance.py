@@ -47,7 +47,9 @@ def build_channel_performance_mart_spark(
 
     # 2. Attach Line Contribution Margin
     items_with_channel = order_items_df.join(
-        valid_orders.select("source_order_id", "source_restaurant_id", "order_channel", "order_month"),
+        valid_orders.select(
+            "source_order_id", "source_restaurant_id", "order_channel", "order_month"
+        ),
         on="source_order_id",
         how="inner",
     )

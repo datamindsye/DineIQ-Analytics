@@ -30,10 +30,10 @@ def build_wastage_mart_spark(
     logger.info("Executing Spark Wastage mart transformation")
 
     # 1. Prepared dish wastage path
-    dish_waste = wastage_df.filter(F.col("source_menu_item_id").isNotNull()).withColumn(
-        "calendar_year", F.year(F.col("wastage_timestamp"))
-    ).withColumn(
-        "calendar_week", F.weekofyear(F.col("wastage_timestamp"))
+    dish_waste = (
+        wastage_df.filter(F.col("source_menu_item_id").isNotNull())
+        .withColumn("calendar_year", F.year(F.col("wastage_timestamp")))
+        .withColumn("calendar_week", F.weekofyear(F.col("wastage_timestamp")))
     )
     dish_waste.createOrReplaceTempView("spark_temp_dish_waste")
 
@@ -53,10 +53,10 @@ def build_wastage_mart_spark(
     """)
 
     # 2. Raw ingredient wastage path (isolated for analytics, not given dish ML target)
-    raw_waste = wastage_df.filter(F.col("source_menu_item_id").isNull()).withColumn(
-        "calendar_year", F.year(F.col("wastage_timestamp"))
-    ).withColumn(
-        "calendar_week", F.weekofyear(F.col("wastage_timestamp"))
+    raw_waste = (
+        wastage_df.filter(F.col("source_menu_item_id").isNull())
+        .withColumn("calendar_year", F.year(F.col("wastage_timestamp")))
+        .withColumn("calendar_week", F.weekofyear(F.col("wastage_timestamp")))
     )
     raw_waste.createOrReplaceTempView("spark_temp_raw_waste")
 
@@ -83,14 +83,16 @@ def build_wastage_mart_spark(
     """)
 
     # 3. Weekly sales per (restaurant, menu_item, year, week)
-    valid_orders = orders_df.filter(F.col("order_status") != "Voided").withColumn(
-        "calendar_year", F.year(F.col("order_timestamp"))
-    ).withColumn(
-        "calendar_week", F.weekofyear(F.col("order_timestamp"))
+    valid_orders = (
+        orders_df.filter(F.col("order_status") != "Voided")
+        .withColumn("calendar_year", F.year(F.col("order_timestamp")))
+        .withColumn("calendar_week", F.weekofyear(F.col("order_timestamp")))
     )
 
     merged_sales = order_items_df.join(
-        valid_orders.select("source_order_id", "source_restaurant_id", "calendar_year", "calendar_week"),
+        valid_orders.select(
+            "source_order_id", "source_restaurant_id", "calendar_year", "calendar_week"
+        ),
         on="source_order_id",
         how="inner",
     )
@@ -115,32 +117,35 @@ def build_wastage_mart_spark(
         how="outer",
     )
 
-    dish_mart = dish_mart.withColumn(
-        "item_type", F.lit("PREPARED_DISH")
-    ).withColumn(
-        "ingredient_name", F.lit(None).cast("string")
-    ).withColumn(
-        "sold_quantity", F.coalesce(F.col("sold_quantity"), F.lit(0))
-    ).withColumn(
-        "gross_revenue", F.coalesce(F.col("gross_revenue"), F.lit(0.0))
-    ).withColumn(
-        "waste_quantity", F.coalesce(F.col("waste_quantity"), F.lit(0.0))
-    ).withColumn(
-        "waste_cost", F.coalesce(F.col("waste_cost"), F.lit(0.0))
-    ).withColumn(
-        "primary_reason", F.coalesce(F.col("primary_reason"), F.lit("None"))
+    dish_mart = (
+        dish_mart.withColumn("item_type", F.lit("PREPARED_DISH"))
+        .withColumn("ingredient_name", F.lit(None).cast("string"))
+        .withColumn("sold_quantity", F.coalesce(F.col("sold_quantity"), F.lit(0)))
+        .withColumn("gross_revenue", F.coalesce(F.col("gross_revenue"), F.lit(0.0)))
+        .withColumn("waste_quantity", F.coalesce(F.col("waste_quantity"), F.lit(0.0)))
+        .withColumn("waste_cost", F.coalesce(F.col("waste_cost"), F.lit(0.0)))
+        .withColumn("primary_reason", F.coalesce(F.col("primary_reason"), F.lit("None")))
     )
 
     # 5. Strict Zero-Denominator and Ratio Calculations
-    dish_mart = dish_mart.withColumn(
-        "waste_cost_ratio",
-        F.when(F.col("gross_revenue") > 0, F.round(F.col("waste_cost") / F.col("gross_revenue"), 4)).otherwise(None),
-    ).withColumn(
-        "waste_quantity_ratio",
-        F.when(F.col("sold_quantity") > 0, F.round(F.col("waste_quantity") / F.col("sold_quantity"), 4)).otherwise(None),
-    ).withColumn(
-        "extreme_operational_risk",
-        (F.col("waste_quantity") > 0) & (F.col("sold_quantity") == 0),
+    dish_mart = (
+        dish_mart.withColumn(
+            "waste_cost_ratio",
+            F.when(
+                F.col("gross_revenue") > 0, F.round(F.col("waste_cost") / F.col("gross_revenue"), 4)
+            ).otherwise(None),
+        )
+        .withColumn(
+            "waste_quantity_ratio",
+            F.when(
+                F.col("sold_quantity") > 0,
+                F.round(F.col("waste_quantity") / F.col("sold_quantity"), 4),
+            ).otherwise(None),
+        )
+        .withColumn(
+            "extreme_operational_risk",
+            (F.col("waste_quantity") > 0) & (F.col("sold_quantity") == 0),
+        )
     )
 
     # 6. Current Week Wastage Risk Label
@@ -161,27 +166,44 @@ def build_wastage_mart_spark(
     )
     dish_mart = dish_mart.withColumn(
         "next_week_wastage_risk",
-        F.coalesce(F.lead("current_week_wastage_risk", 1).over(dish_window), F.lit(WastageRiskClass.LOW_RISK.value)),
+        F.coalesce(
+            F.lead("current_week_wastage_risk", 1).over(dish_window),
+            F.lit(WastageRiskClass.LOW_RISK.value),
+        ),
     )
 
     # 8. Union prepared dish mart with raw ingredient mart
     common_cols = [
-        "source_restaurant_id", "source_menu_item_id", "item_type", "ingredient_name",
-        "calendar_year", "calendar_week", "waste_quantity", "waste_cost", "primary_reason",
-        "sold_quantity", "gross_revenue", "waste_cost_ratio", "waste_quantity_ratio",
-        "extreme_operational_risk", "current_week_wastage_risk", "next_week_wastage_risk",
+        "source_restaurant_id",
+        "source_menu_item_id",
+        "item_type",
+        "ingredient_name",
+        "calendar_year",
+        "calendar_week",
+        "waste_quantity",
+        "waste_cost",
+        "primary_reason",
+        "sold_quantity",
+        "gross_revenue",
+        "waste_cost_ratio",
+        "waste_quantity_ratio",
+        "extreme_operational_risk",
+        "current_week_wastage_risk",
+        "next_week_wastage_risk",
     ]
 
     final_mart = dish_mart.select(*common_cols).unionByName(raw_weekly_waste.select(*common_cols))
 
     # Attach menu item metadata
     final_mart = final_mart.join(
-        F.broadcast(menu_items_df.select(
-            "source_menu_item_id",
-            "item_name",
-            "source_category_id",
-            "current_base_cost",
-        )),
+        F.broadcast(
+            menu_items_df.select(
+                "source_menu_item_id",
+                "item_name",
+                "source_category_id",
+                "current_base_cost",
+            )
+        ),
         on="source_menu_item_id",
         how="left",
     )

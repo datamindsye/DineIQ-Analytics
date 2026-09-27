@@ -81,20 +81,14 @@ def build_customer_rfm_mart_spark(
         "home_city",
     ).join(segmented_rfm, on="source_customer_id", how="left")
 
-    final_df = final_df.withColumn(
-        "frequency", F.coalesce(F.col("frequency"), F.lit(0))
-    ).withColumn(
-        "monetary_value", F.coalesce(F.col("monetary_value"), F.lit(0.0))
-    ).withColumn(
-        "recency_days", F.coalesce(F.col("recency_days"), F.lit(999))
-    ).withColumn(
-        "rfm_segment", F.coalesce(F.col("rfm_segment"), F.lit("Inactive"))
-    ).withColumn(
-        "r_score", F.coalesce(F.col("r_score"), F.lit(1))
-    ).withColumn(
-        "f_score", F.coalesce(F.col("f_score"), F.lit(1))
-    ).withColumn(
-        "m_score", F.coalesce(F.col("m_score"), F.lit(1))
+    final_df = (
+        final_df.withColumn("frequency", F.coalesce(F.col("frequency"), F.lit(0)))
+        .withColumn("monetary_value", F.coalesce(F.col("monetary_value"), F.lit(0.0)))
+        .withColumn("recency_days", F.coalesce(F.col("recency_days"), F.lit(999)))
+        .withColumn("rfm_segment", F.coalesce(F.col("rfm_segment"), F.lit("Inactive")))
+        .withColumn("r_score", F.coalesce(F.col("r_score"), F.lit(1)))
+        .withColumn("f_score", F.coalesce(F.col("f_score"), F.lit(1)))
+        .withColumn("m_score", F.coalesce(F.col("m_score"), F.lit(1)))
     )
 
     return final_df

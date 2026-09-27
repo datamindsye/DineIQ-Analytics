@@ -147,7 +147,9 @@ def run_all_marts(
 
     # 5. mart_location_performance
     t0 = time.time()
-    logger.info("Running mart 5/12: mart_location_performance via Spark SQL multi-way aggregations...")
+    logger.info(
+        "Running mart 5/12: mart_location_performance via Spark SQL multi-way aggregations..."
+    )
     df_loc = build_location_performance_mart_spark(
         spark=spark,
         restaurants_df=tables["restaurants"],
@@ -242,7 +244,9 @@ def run_all_marts(
 
     # 11. mart_sales_anomalies
     t0 = time.time()
-    logger.info("Running mart 11/12: mart_sales_anomalies via Spark SQL & 14-day rolling Windows...")
+    logger.info(
+        "Running mart 11/12: mart_sales_anomalies via Spark SQL & 14-day rolling Windows..."
+    )
     df_sales = build_sales_anomalies_mart_spark(
         spark=spark,
         orders_df=tables["orders"],
@@ -256,7 +260,9 @@ def run_all_marts(
 
     # 12. mart_demand_historical
     t0 = time.time()
-    logger.info("Running mart 12/12: mart_demand_historical via Spark SQL & anti-leakage lag Windows...")
+    logger.info(
+        "Running mart 12/12: mart_demand_historical via Spark SQL & anti-leakage lag Windows..."
+    )
     df_demand = build_demand_historical_mart_spark(
         spark=spark,
         order_items_df=tables["order_items"],

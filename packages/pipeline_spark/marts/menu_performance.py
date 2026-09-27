@@ -34,15 +34,17 @@ def build_menu_performance_mart_spark(
     Grain: (source_restaurant_id, source_menu_item_id) if restaurant_grain=True,
            or source_menu_item_id for overall chain rollup.
     """
-    logger.info("Executing Spark Menu Performance mart transformation (restaurant_grain=%s)", restaurant_grain)
+    logger.info(
+        "Executing Spark Menu Performance mart transformation (restaurant_grain=%s)",
+        restaurant_grain,
+    )
 
     # 1. Register temporary views for Spark SQL queries
-    valid_orders = orders_df.filter(F.col("order_status") != "Voided").withColumn(
-        "order_date_dt", F.to_timestamp(F.col("order_timestamp"))
-    ).withColumn(
-        "order_date", F.to_date(F.col("order_timestamp"))
-    ).withColumn(
-        "is_weekend", F.dayofweek(F.col("order_timestamp")).isin([1, 6, 7])
+    valid_orders = (
+        orders_df.filter(F.col("order_status") != "Voided")
+        .withColumn("order_date_dt", F.to_timestamp(F.col("order_timestamp")))
+        .withColumn("order_date", F.to_date(F.col("order_timestamp")))
+        .withColumn("is_weekend", F.dayofweek(F.col("order_timestamp")).isin([1, 6, 7]))
     )
 
     valid_orders.createOrReplaceTempView("spark_temp_orders")
@@ -55,9 +57,7 @@ def build_menu_performance_mart_spark(
         else "oi.source_menu_item_id"
     )
     outer_group = (
-        "source_restaurant_id, source_menu_item_id"
-        if restaurant_grain
-        else "source_menu_item_id"
+        "source_restaurant_id, source_menu_item_id" if restaurant_grain else "source_menu_item_id"
     )
 
     sales_stats = spark.sql(f"""
@@ -94,7 +94,11 @@ def build_menu_performance_mart_spark(
         GROUP BY {outer_group}
     """)
 
-    join_cols = ["source_restaurant_id", "source_menu_item_id"] if restaurant_grain else ["source_menu_item_id"]
+    join_cols = (
+        ["source_restaurant_id", "source_menu_item_id"]
+        if restaurant_grain
+        else ["source_menu_item_id"]
+    )
     item_stats = sales_stats.join(repeat_stats, on=join_cols, how="left")
 
     # 4. Sales Trend: 2nd half vs 1st half of observation window
@@ -127,74 +131,83 @@ def build_menu_performance_mart_spark(
 
     # 5. Wastage metrics (prepared dishes only: source_menu_item_id is not null)
     dish_wastage = wastage_df.filter(F.col("source_menu_item_id").isNotNull())
-    waste_stats = (
-        dish_wastage.groupBy(join_cols)
-        .agg(
-            F.sum("quantity_lost").alias("waste_quantity"),
-            F.round(F.sum("cost_loss_amount"), 2).alias("waste_cost"),
-        )
+    waste_stats = dish_wastage.groupBy(join_cols).agg(
+        F.sum("quantity_lost").alias("waste_quantity"),
+        F.round(F.sum("cost_loss_amount"), 2).alias("waste_cost"),
     )
     item_stats = item_stats.join(waste_stats, on=join_cols, how="left")
 
     # 6. Customer ratings
     dish_ratings = ratings_df.filter(F.col("source_menu_item_id").isNotNull())
-    rating_group = ["source_restaurant_id", "source_menu_item_id"] if restaurant_grain else ["source_menu_item_id"]
-    rating_stats = (
-        dish_ratings.groupBy(rating_group)
-        .agg(
-            F.count("rating_score").alias("rating_count"),
-            F.round(F.avg("rating_score"), 2).alias("avg_rating"),
-        )
+    rating_group = (
+        ["source_restaurant_id", "source_menu_item_id"]
+        if restaurant_grain
+        else ["source_menu_item_id"]
+    )
+    rating_stats = dish_ratings.groupBy(rating_group).agg(
+        F.count("rating_score").alias("rating_count"),
+        F.round(F.avg("rating_score"), 2).alias("avg_rating"),
     )
     item_stats = item_stats.join(rating_stats, on=join_cols, how="left")
 
     # Fill defaults for ratios
-    item_stats = item_stats.withColumn(
-        "profitability_pct",
-        F.when(F.col("gross_revenue") > 0, F.col("contribution_margin") / F.col("gross_revenue")).otherwise(0.0),
-    ).withColumn(
-        "weekend_share",
-        F.when(F.col("total_quantity") > 0, F.col("weekend_quantity") / F.col("total_quantity")).otherwise(0.0),
-    ).withColumn(
-        "promotion_dependency",
-        F.when(F.col("total_quantity") > 0, F.col("promo_quantity") / F.col("total_quantity")).otherwise(0.0),
-    ).withColumn(
-        "active_days",
-        F.datediff(F.col("last_order_date"), F.col("first_order_date")) + 1,
-    ).withColumn(
-        "repeat_customers", F.coalesce(F.col("repeat_customers"), F.lit(0))
-    ).withColumn(
-        "repeat_purchase_rate",
-        F.when(F.col("total_customers") > 0, F.col("repeat_customers") / F.col("total_customers")).otherwise(0.0),
-    ).withColumn(
-        "waste_quantity", F.coalesce(F.col("waste_quantity"), F.lit(0.0))
-    ).withColumn(
-        "waste_cost", F.coalesce(F.col("waste_cost"), F.lit(0.0))
-    ).withColumn(
-        "wastage_pct",
-        F.when(
-            (F.col("total_quantity") + F.col("waste_quantity")) > 0,
-            F.col("waste_quantity") / (F.col("total_quantity") + F.col("waste_quantity")),
-        ).otherwise(0.0),
-    ).withColumn(
-        "avg_rating", F.coalesce(F.col("avg_rating"), F.lit(4.0))
-    ).withColumn(
-        "rating_count", F.coalesce(F.col("rating_count"), F.lit(0))
-    ).withColumn(
-        "sales_trend_ratio", F.coalesce(F.col("sales_trend_ratio"), F.lit(1.0))
+    item_stats = (
+        item_stats.withColumn(
+            "profitability_pct",
+            F.when(
+                F.col("gross_revenue") > 0, F.col("contribution_margin") / F.col("gross_revenue")
+            ).otherwise(0.0),
+        )
+        .withColumn(
+            "weekend_share",
+            F.when(
+                F.col("total_quantity") > 0, F.col("weekend_quantity") / F.col("total_quantity")
+            ).otherwise(0.0),
+        )
+        .withColumn(
+            "promotion_dependency",
+            F.when(
+                F.col("total_quantity") > 0, F.col("promo_quantity") / F.col("total_quantity")
+            ).otherwise(0.0),
+        )
+        .withColumn(
+            "active_days",
+            F.datediff(F.col("last_order_date"), F.col("first_order_date")) + 1,
+        )
+        .withColumn("repeat_customers", F.coalesce(F.col("repeat_customers"), F.lit(0)))
+        .withColumn(
+            "repeat_purchase_rate",
+            F.when(
+                F.col("total_customers") > 0, F.col("repeat_customers") / F.col("total_customers")
+            ).otherwise(0.0),
+        )
+        .withColumn("waste_quantity", F.coalesce(F.col("waste_quantity"), F.lit(0.0)))
+        .withColumn("waste_cost", F.coalesce(F.col("waste_cost"), F.lit(0.0)))
+        .withColumn(
+            "wastage_pct",
+            F.when(
+                (F.col("total_quantity") + F.col("waste_quantity")) > 0,
+                F.col("waste_quantity") / (F.col("total_quantity") + F.col("waste_quantity")),
+            ).otherwise(0.0),
+        )
+        .withColumn("avg_rating", F.coalesce(F.col("avg_rating"), F.lit(4.0)))
+        .withColumn("rating_count", F.coalesce(F.col("rating_count"), F.lit(0)))
+        .withColumn("sales_trend_ratio", F.coalesce(F.col("sales_trend_ratio"), F.lit(1.0)))
     )
 
     # 7. Join menu metadata & category
     item_stats = item_stats.join(
-        F.broadcast(menu_items_df.select(
-            "source_menu_item_id",
-            "source_category_id",
-            "item_name",
-            "current_base_price",
-            "current_base_cost",
-            "is_seasonal",
-            "prep_time_minutes",
-        )),
+        F.broadcast(
+            menu_items_df.select(
+                "source_menu_item_id",
+                "source_category_id",
+                "item_name",
+                "current_base_price",
+                "current_base_cost",
+                "is_seasonal",
+                "prep_time_minutes",
+            )
+        ),
         on="source_menu_item_id",
         how="left",
     )
@@ -219,38 +232,33 @@ def build_menu_performance_mart_spark(
     promo_window = Window.orderBy("promotion_dependency")
     trend_window = Window.orderBy("sales_trend_ratio")
 
-    item_stats = item_stats.withColumn(
-        "rank_qty", F.percent_rank().over(cohort_window) * 100.0
-    ).withColumn(
-        "rank_rev", F.percent_rank().over(rev_window) * 100.0
-    ).withColumn(
-        "rank_margin", F.percent_rank().over(margin_window) * 100.0
-    ).withColumn(
-        "rank_profit_pct", F.percent_rank().over(profit_pct_window) * 100.0
-    ).withColumn(
-        "rank_rating", F.percent_rank().over(rating_window) * 100.0
-    ).withColumn(
-        "rank_repeat", F.percent_rank().over(repeat_window) * 100.0
-    ).withColumn(
-        "rank_waste", F.percent_rank().over(waste_window) * 100.0
-    ).withColumn(
-        "rank_promo", F.percent_rank().over(promo_window) * 100.0
-    ).withColumn(
-        "rank_trend", F.percent_rank().over(trend_window) * 100.0
+    item_stats = (
+        item_stats.withColumn("rank_qty", F.percent_rank().over(cohort_window) * 100.0)
+        .withColumn("rank_rev", F.percent_rank().over(rev_window) * 100.0)
+        .withColumn("rank_margin", F.percent_rank().over(margin_window) * 100.0)
+        .withColumn("rank_profit_pct", F.percent_rank().over(profit_pct_window) * 100.0)
+        .withColumn("rank_rating", F.percent_rank().over(rating_window) * 100.0)
+        .withColumn("rank_repeat", F.percent_rank().over(repeat_window) * 100.0)
+        .withColumn("rank_waste", F.percent_rank().over(waste_window) * 100.0)
+        .withColumn("rank_promo", F.percent_rank().over(promo_window) * 100.0)
+        .withColumn("rank_trend", F.percent_rank().over(trend_window) * 100.0)
     )
 
-    item_stats = item_stats.withColumn(
-        "demand_score", F.round(0.5 * F.col("rank_qty") + 0.5 * F.col("rank_rev"), 2)
-    ).withColumn(
-        "profitability_score", F.round(0.5 * F.col("rank_margin") + 0.5 * F.col("rank_profit_pct"), 2)
-    ).withColumn(
-        "customer_signal_score", F.round(0.6 * F.col("rank_rating") + 0.4 * F.col("rank_repeat"), 2)
-    ).withColumn(
-        "wastage_health_score", F.round(100.0 - F.col("rank_waste"), 2)
-    ).withColumn(
-        "sales_trend_score", F.round(F.col("rank_trend"), 2)
-    ).withColumn(
-        "promotion_independence_score", F.round(100.0 - F.col("rank_promo"), 2)
+    item_stats = (
+        item_stats.withColumn(
+            "demand_score", F.round(0.5 * F.col("rank_qty") + 0.5 * F.col("rank_rev"), 2)
+        )
+        .withColumn(
+            "profitability_score",
+            F.round(0.5 * F.col("rank_margin") + 0.5 * F.col("rank_profit_pct"), 2),
+        )
+        .withColumn(
+            "customer_signal_score",
+            F.round(0.6 * F.col("rank_rating") + 0.4 * F.col("rank_repeat"), 2),
+        )
+        .withColumn("wastage_health_score", F.round(100.0 - F.col("rank_waste"), 2))
+        .withColumn("sales_trend_score", F.round(F.col("rank_trend"), 2))
+        .withColumn("promotion_independence_score", F.round(100.0 - F.col("rank_promo"), 2))
     )
 
     # Composite Score
@@ -287,9 +295,15 @@ def build_menu_performance_mart_spark(
     is_high_customer = F.col("customer_signal_score") >= high
 
     classification_expr = (
-        F.when(is_high_demand & is_high_profit & is_acceptable_waste & is_promo_independent, MenuPerformanceCategory.PROFIT_DRIVER.value)
+        F.when(
+            is_high_demand & is_high_profit & is_acceptable_waste & is_promo_independent,
+            MenuPerformanceCategory.PROFIT_DRIVER.value,
+        )
         .when(is_high_demand & (~is_high_profit), MenuPerformanceCategory.VOLUME_DRIVER.value)
-        .when((~is_high_demand) & (is_high_profit | is_high_customer) & is_acceptable_waste, MenuPerformanceCategory.HIDDEN_OPPORTUNITY.value)
+        .when(
+            (~is_high_demand) & (is_high_profit | is_high_customer) & is_acceptable_waste,
+            MenuPerformanceCategory.HIDDEN_OPPORTUNITY.value,
+        )
         .otherwise(MenuPerformanceCategory.LOW_PERFORMER.value)
     )
     item_stats = item_stats.withColumn("classification", classification_expr)
@@ -297,40 +311,63 @@ def build_menu_performance_mart_spark(
     # -------------------------------------------------------------------------
     # 10. Tricky Edge Case Boolean Flags (SRS Step 11)
     # -------------------------------------------------------------------------
-    item_stats = item_stats.withColumn(
-        "flag_high_selling_loss_making",
-        (F.col("demand_score") >= high) & ((F.col("contribution_margin") <= 0) | (F.col("profitability_score") <= low)),
-    ).withColumn(
-        "flag_profitable_rarely_purchased",
-        (F.col("profitability_score") >= high) & (F.col("demand_score") <= low),
-    ).withColumn(
-        "flag_popular_high_wastage",
-        (F.col("demand_score") >= high) & (F.col("wastage_health_score") <= low),
-    ).withColumn(
-        "flag_high_rating_low_profitability",
-        (F.col("avg_rating") >= MenuPerformanceContract.HIGH_RATING_THRESHOLD) & (F.col("profitability_score") <= low),
-    ).withColumn(
-        "flag_low_rating_high_sales",
-        (F.col("avg_rating") <= MenuPerformanceContract.LOW_RATING_THRESHOLD) & (F.col("demand_score") >= high),
-    ).withColumn(
-        "flag_promotion_dependent",
-        F.col("promotion_dependency") >= MenuPerformanceContract.PROMOTION_DEPENDENCY_THRESHOLD,
-    ).withColumn(
-        "flag_weekend_only_pattern",
-        F.col("weekend_share") >= MenuPerformanceContract.WEEKEND_SALES_THRESHOLD,
-    ).withColumn(
-        "flag_seasonal_item", F.coalesce(F.col("is_seasonal"), F.lit(False)),
-    ).withColumn(
-        "flag_new_item_insufficient_history",
-        F.col("active_days") < MenuPerformanceContract.NEW_ITEM_MAX_ACTIVE_DAYS,
-    ).withColumn(
-        "flag_location_divergence", F.lit(False),
+    item_stats = (
+        item_stats.withColumn(
+            "flag_high_selling_loss_making",
+            (F.col("demand_score") >= high)
+            & ((F.col("contribution_margin") <= 0) | (F.col("profitability_score") <= low)),
+        )
+        .withColumn(
+            "flag_profitable_rarely_purchased",
+            (F.col("profitability_score") >= high) & (F.col("demand_score") <= low),
+        )
+        .withColumn(
+            "flag_popular_high_wastage",
+            (F.col("demand_score") >= high) & (F.col("wastage_health_score") <= low),
+        )
+        .withColumn(
+            "flag_high_rating_low_profitability",
+            (F.col("avg_rating") >= MenuPerformanceContract.HIGH_RATING_THRESHOLD)
+            & (F.col("profitability_score") <= low),
+        )
+        .withColumn(
+            "flag_low_rating_high_sales",
+            (F.col("avg_rating") <= MenuPerformanceContract.LOW_RATING_THRESHOLD)
+            & (F.col("demand_score") >= high),
+        )
+        .withColumn(
+            "flag_promotion_dependent",
+            F.col("promotion_dependency") >= MenuPerformanceContract.PROMOTION_DEPENDENCY_THRESHOLD,
+        )
+        .withColumn(
+            "flag_weekend_only_pattern",
+            F.col("weekend_share") >= MenuPerformanceContract.WEEKEND_SALES_THRESHOLD,
+        )
+        .withColumn(
+            "flag_seasonal_item",
+            F.coalesce(F.col("is_seasonal"), F.lit(False)),
+        )
+        .withColumn(
+            "flag_new_item_insufficient_history",
+            F.col("active_days") < MenuPerformanceContract.NEW_ITEM_MAX_ACTIVE_DAYS,
+        )
+        .withColumn(
+            "flag_location_divergence",
+            F.lit(False),
+        )
     )
 
     # Drop intermediate rank columns for clean mart output
     final_df = item_stats.drop(
-        "rank_qty", "rank_rev", "rank_margin", "rank_profit_pct",
-        "rank_rating", "rank_repeat", "rank_waste", "rank_promo", "rank_trend"
+        "rank_qty",
+        "rank_rev",
+        "rank_margin",
+        "rank_profit_pct",
+        "rank_rating",
+        "rank_repeat",
+        "rank_waste",
+        "rank_promo",
+        "rank_trend",
     )
 
     return final_df

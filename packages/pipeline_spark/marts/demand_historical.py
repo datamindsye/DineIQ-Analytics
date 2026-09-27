@@ -79,9 +79,7 @@ def build_demand_historical_mart_spark(
     # 5. Seasonal-Naive Baseline:
     # Lagged mean of same day-of-week over prior 4 weeks strictly <= t-1 (zero future leakage)
     seasonal_dow_window = (
-        Window.partitionBy(
-            "source_restaurant_id", "source_menu_item_id", "day_of_week_num"
-        )
+        Window.partitionBy("source_restaurant_id", "source_menu_item_id", "day_of_week_num")
         .orderBy("order_date")
         .rowsBetween(-4, -1)
     )
@@ -96,9 +94,7 @@ def build_demand_historical_mart_spark(
         daily_demand.withColumn(
             "lagged_dow_avg", F.avg("historical_demand").over(seasonal_dow_window)
         )
-        .withColumn(
-            "prior_overall_avg", F.avg("historical_demand").over(overall_hist_window)
-        )
+        .withColumn("prior_overall_avg", F.avg("historical_demand").over(overall_hist_window))
         .withColumn(
             "seasonal_naive_baseline",
             F.round(
@@ -138,9 +134,7 @@ def build_demand_historical_mart_spark(
     # 7. Attach Category Metadata if provided
     if categories_df is not None:
         mart = mart.join(
-            F.broadcast(
-                categories_df.select("source_category_id", "category_name")
-            ),
+            F.broadcast(categories_df.select("source_category_id", "category_name")),
             on="source_category_id",
             how="left",
         )

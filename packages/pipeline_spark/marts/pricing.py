@@ -31,16 +31,16 @@ def build_pricing_mart_spark(
     logger.info("Executing Spark Pricing mart transformation")
 
     # 1. Clean dates and prepare events
-    pricing = pricing_history_df.withColumn(
-        "eff_date", F.to_date(F.col("effective_from"))
-    ).withColumn(
-        "pre_start", F.date_sub(F.col("eff_date"), PriceElasticityContract.PRE_WINDOW_DAYS)
-    ).withColumn(
-        "pre_end", F.date_sub(F.col("eff_date"), 1)
-    ).withColumn(
-        "post_start", F.col("eff_date")
-    ).withColumn(
-        "post_end", F.date_add(F.col("eff_date"), PriceElasticityContract.POST_WINDOW_DAYS - 1)
+    pricing = (
+        pricing_history_df.withColumn("eff_date", F.to_date(F.col("effective_from")))
+        .withColumn(
+            "pre_start", F.date_sub(F.col("eff_date"), PriceElasticityContract.PRE_WINDOW_DAYS)
+        )
+        .withColumn("pre_end", F.date_sub(F.col("eff_date"), 1))
+        .withColumn("post_start", F.col("eff_date"))
+        .withColumn(
+            "post_end", F.date_add(F.col("eff_date"), PriceElasticityContract.POST_WINDOW_DAYS - 1)
+        )
     )
     pricing.createOrReplaceTempView("spark_temp_pricing_events")
 
@@ -109,9 +109,7 @@ def build_pricing_mart_spark(
     qty_diff_pct = (F.col("post_quantity") - F.col("pre_quantity")) / F.col("pre_quantity")
 
     valid_elasticity = (
-        (F.col("pre_quantity") > 0)
-        & (F.col("pre_price") > 0)
-        & (F.abs(price_diff_pct) > 1e-6)
+        (F.col("pre_quantity") > 0) & (F.col("pre_price") > 0) & (F.abs(price_diff_pct) > 1e-6)
     )
 
     pricing_metrics = pricing_metrics.withColumn(

@@ -183,7 +183,11 @@ def test_mart_wastage(spark: SparkSession, spark_tables: dict[str, DataFrame]):
     assert "waste_quantity_ratio" in df.columns
     assert "extreme_operational_risk" in df.columns
     assert "next_week_wastage_risk" in df.columns
-    risks = [r.next_week_wastage_risk for r in df.select("next_week_wastage_risk").distinct().collect() if r.next_week_wastage_risk is not None]
+    risks = [
+        r.next_week_wastage_risk
+        for r in df.select("next_week_wastage_risk").distinct().collect()
+        if r.next_week_wastage_risk is not None
+    ]
     assert set(risks).issubset({0, 1})
     assert df.count() > 0
 
@@ -260,12 +264,24 @@ def test_sales_anomalies_rolling_baseline_excludes_current_day(spark: SparkSessi
 
     # Construct 11 consecutive days: 10 baseline days at 100.0, and day 11 with 1000.0 spike
     orders_data = [
-        (f"ORD_{i:02d}", "R_TEST", f"2025-01-{i:02d} 12:00:00", "Completed", 100.0 if i < 11 else 1000.0)
+        (
+            f"ORD_{i:02d}",
+            "R_TEST",
+            f"2025-01-{i:02d} 12:00:00",
+            "Completed",
+            100.0 if i < 11 else 1000.0,
+        )
         for i in range(1, 12)
     ]
     orders_df = spark.createDataFrame(
         orders_data,
-        ["source_order_id", "source_restaurant_id", "order_timestamp", "order_status", "total_amount"],
+        [
+            "source_order_id",
+            "source_restaurant_id",
+            "order_timestamp",
+            "order_status",
+            "total_amount",
+        ],
     )
     restaurants_df = spark.createDataFrame(
         [("R_TEST", "Test Location", "Riyadh", "Dine-In")],
@@ -279,7 +295,9 @@ def test_sales_anomalies_rolling_baseline_excludes_current_day(spark: SparkSessi
     day_11 = results[date(2025, 1, 11)]
 
     # 1. Day 1 has insufficient prior history: current day MUST NOT contribute to its own baseline
-    assert day_1.rolling_mean_revenue is None, "Day 1 rolling mean must be None (zero prior observations)"
+    assert day_1.rolling_mean_revenue is None, (
+        "Day 1 rolling mean must be None (zero prior observations)"
+    )
     assert day_1.z_score_revenue == 0.0
     assert day_1.anomaly_type == "Normal"
 

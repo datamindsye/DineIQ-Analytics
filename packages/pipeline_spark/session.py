@@ -32,6 +32,20 @@ def get_spark_session(app_name: str = "DineIQ-Spark-Analytics") -> object | None
         os.environ["PYSPARK_PYTHON"] = sys.executable
         os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 
+        # Configure JAVA_HOME if not set in environment
+        if "JAVA_HOME" not in os.environ:
+            for candidate in [
+                r"C:\Program Files\Java\jdk-17",
+                r"C:\Program Files\Java\jdk-21",
+                r"C:\Program Files\Eclipse Adoptium\jdk-17",
+            ]:
+                if os.path.exists(candidate):
+                    os.environ["JAVA_HOME"] = candidate
+                    java_bin = os.path.join(candidate, "bin")
+                    if java_bin not in os.environ.get("PATH", ""):
+                        os.environ["PATH"] = java_bin + ";" + os.environ.get("PATH", "")
+                    break
+
         # Configure HADOOP_HOME and PATH for Windows native filesystem committers
         if os.path.exists(r"C:\hadoop"):
             os.environ["HADOOP_HOME"] = r"C:\hadoop"

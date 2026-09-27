@@ -26,14 +26,16 @@ def build_ratings_anomalies_mart_spark(
     logger.info("Executing Spark Ratings Anomalies mart transformation")
 
     # 1. Weekly sales volume per item + restaurant
-    valid_orders = orders_df.filter(F.col("order_status") != "Voided").withColumn(
-        "calendar_year", F.year(F.col("order_timestamp"))
-    ).withColumn(
-        "calendar_week", F.weekofyear(F.col("order_timestamp"))
+    valid_orders = (
+        orders_df.filter(F.col("order_status") != "Voided")
+        .withColumn("calendar_year", F.year(F.col("order_timestamp")))
+        .withColumn("calendar_week", F.weekofyear(F.col("order_timestamp")))
     )
 
     item_sales = order_items_df.join(
-        valid_orders.select("source_order_id", "source_restaurant_id", "calendar_year", "calendar_week"),
+        valid_orders.select(
+            "source_order_id", "source_restaurant_id", "calendar_year", "calendar_week"
+        ),
         on="source_order_id",
         how="inner",
     )
@@ -52,10 +54,10 @@ def build_ratings_anomalies_mart_spark(
     weekly_vol.createOrReplaceTempView("spark_temp_weekly_vol")
 
     # 2. Weekly dish ratings per item + restaurant + week
-    dish_ratings = ratings_df.filter(F.col("source_menu_item_id").isNotNull()).withColumn(
-        "calendar_year", F.year(F.col("rating_timestamp"))
-    ).withColumn(
-        "calendar_week", F.weekofyear(F.col("rating_timestamp"))
+    dish_ratings = (
+        ratings_df.filter(F.col("source_menu_item_id").isNotNull())
+        .withColumn("calendar_year", F.year(F.col("rating_timestamp")))
+        .withColumn("calendar_week", F.weekofyear(F.col("rating_timestamp")))
     )
     dish_ratings.createOrReplaceTempView("spark_temp_dish_ratings")
 
@@ -85,20 +87,23 @@ def build_ratings_anomalies_mart_spark(
 
     # 4. Compute Z-score relative to item's historical baseline across weeks
     item_window = Window.partitionBy("source_menu_item_id")
-    mart = mart.withColumn(
-        "item_overall_mean", F.avg("mean_rating").over(item_window)
-    ).withColumn(
-        "item_overall_std", F.coalesce(F.stddev("mean_rating").over(item_window), F.lit(0.5))
-    ).withColumn(
-        "z_score",
-        F.round(
-            (F.col("mean_rating") - F.col("item_overall_mean"))
-            / F.when(F.col("item_overall_std") > 0, F.col("item_overall_std")).otherwise(1.0),
-            2,
-        ),
-    ).withColumn(
-        "negative_rating_rate",
-        F.round(F.col("negative_ratings_count") / F.col("rating_count"), 4),
+    mart = (
+        mart.withColumn("item_overall_mean", F.avg("mean_rating").over(item_window))
+        .withColumn(
+            "item_overall_std", F.coalesce(F.stddev("mean_rating").over(item_window), F.lit(0.5))
+        )
+        .withColumn(
+            "z_score",
+            F.round(
+                (F.col("mean_rating") - F.col("item_overall_mean"))
+                / F.when(F.col("item_overall_std") > 0, F.col("item_overall_std")).otherwise(1.0),
+                2,
+            ),
+        )
+        .withColumn(
+            "negative_rating_rate",
+            F.round(F.col("negative_ratings_count") / F.col("rating_count"), 4),
+        )
     )
 
     # 5. Anomaly flags
@@ -110,14 +115,21 @@ def build_ratings_anomalies_mart_spark(
     ).withColumn(
         "anomaly_reason",
         F.when(F.col("z_score") < -1.5, "Statistically Low Rating")
-        .when((F.col("mean_rating") <= 3.0) & (F.col("total_volume_sold") >= 20), "High Volume Poor Quality")
+        .when(
+            (F.col("mean_rating") <= 3.0) & (F.col("total_volume_sold") >= 20),
+            "High Volume Poor Quality",
+        )
         .when(F.col("negative_rating_rate") > 0.30, "Excessive Negative Feedback")
         .otherwise("Normal"),
     )
 
     # Attach menu metadata via broadcast
     mart = mart.join(
-        F.broadcast(menu_items_df.select("source_menu_item_id", "item_name", "source_category_id", "current_base_price")),
+        F.broadcast(
+            menu_items_df.select(
+                "source_menu_item_id", "item_name", "source_category_id", "current_base_price"
+            )
+        ),
         on="source_menu_item_id",
         how="left",
     ).drop("item_overall_mean", "item_overall_std")
