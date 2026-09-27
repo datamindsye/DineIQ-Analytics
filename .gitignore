@@ -73,3 +73,8 @@ data/artifacts/*
 # OS files
 .DS_Store
 Thumbs.db
+
+# pytest local temp
+.pytest_tmp/
+pytest.ini
+

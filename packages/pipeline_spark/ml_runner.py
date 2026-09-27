@@ -1,11 +1,17 @@
-"""Runner interface for the independent Python analytics and data science pipeline.
+"""Spark MLlib Phase 4 ML pipeline runner for DineIQ Analytics.
 
-Phase 4: Orchestrates feature engineering (pandas/PyArrow only) and
-scikit-learn model training for demand forecast, wastage risk, churn risk,
-and customer segmentation. Writes all outputs to data/marts/python/.
+Orchestrates all four Spark ML tasks in sequence:
+    1. Demand Forecast  (GBTRegressor)
+    2. Wastage Risk     (GBTClassifier)
+    3. Churn Risk       (GBTClassifier)
+    4. Customer Segmentation (KMeans)
+
+Each task reads from precomputed analytical marts in data/marts/spark/ and
+materialises predictions to data/marts/spark/ml_*.parquet. Model metadata
+is saved to data/artifacts/spark_*_metadata.json.
 
 Usage:
-    python -m packages.pipeline_python.runner
+    python -m packages.pipeline_spark.ml_runner
 """
 
 from __future__ import annotations
@@ -15,69 +21,54 @@ from pathlib import Path
 from typing import Any
 
 from packages.common.logging import get_logger
-from packages.pipeline_python.features.feature_builder import (
-    build_churn_features,
-    build_demand_features,
-    build_wastage_features,
-)
-from packages.pipeline_python.models.trainers import (
-    train_churn_risk_python,
-    train_customer_segmentation_python,
-    train_demand_forecast_python,
-    train_wastage_risk_python,
-)
+from packages.pipeline_spark.ml.churn_risk import train_churn_risk
+from packages.pipeline_spark.ml.customer_segmentation import train_customer_segmentation
+from packages.pipeline_spark.ml.demand_forecast import train_demand_forecast
+from packages.pipeline_spark.ml.wastage_risk import train_wastage_risk
+from packages.pipeline_spark.session import get_spark_session
 
 logger = get_logger(__name__)
 
 
-class PythonPipelineRunner:
-    """Orchestrates independent Python feature engineering, training, and evaluation."""
-
-    def __init__(self, snapshot_id: str) -> None:
-        self.snapshot_id = snapshot_id
-        logger.info("Initialized PythonPipelineRunner for snapshot: %s", snapshot_id)
-
-    def execute_feature_engineering(self) -> dict[str, Any]:
-        """Placeholder boundary for independent feature engineering."""
-        logger.info("Executing Python feature engineering for snapshot %s", self.snapshot_id)
-        return {"status": "ready", "snapshot_id": self.snapshot_id}
-
-
-def run_python_ml_pipeline(
-    cleaned_dir: str | Path = "data/cleaned/competition_benchmark_v1",
-    output_dir: str | Path = "data/marts/python",
+def run_spark_ml_pipeline(
+    mart_dir: str | Path = "data/marts/spark",
+    output_dir: str | Path = "data/marts/spark",
     artifact_dir: str | Path = "data/artifacts",
 ) -> dict[str, Any]:
-    """Execute the full independent Python ML pipeline.
+    """Execute all four Spark MLlib models sequentially on a single SparkSession.
 
     Args:
-        cleaned_dir: Path to the cleaned Parquet snapshot tables.
-        output_dir: Destination for Python ML prediction Parquet files.
+        mart_dir: Directory containing the 12 precomputed analytical mart Parquet files.
+        output_dir: Destination for ML prediction Parquet files.
         artifact_dir: Destination for model metadata JSON files.
 
     Returns:
-        Summary dict keyed by task name with metrics and duration.
+        Summary dictionary keyed by task name with metrics and duration.
     """
     t_total = time.time()
     summary: dict[str, Any] = {}
-    cleaned_dir = Path(cleaned_dir).resolve()
-    output_dir = Path(output_dir).resolve()
-    artifact_dir = Path(artifact_dir).resolve()
-    output_dir.mkdir(parents=True, exist_ok=True)
-    artifact_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info("=" * 60)
-    logger.info("DineIQ Python ML Phase 4 Pipeline Starting")
-    logger.info("Cleaned source: %s", cleaned_dir)
+    logger.info("DineIQ Spark MLlib Phase 4 Pipeline Starting")
     logger.info("=" * 60)
+
+    spark = get_spark_session()
+    if spark is None:
+        raise RuntimeError(
+            "SparkSession is not available. Ensure Java 17 is installed and JAVA_HOME is set."
+        )
+
+    common_kwargs = {
+        "spark": spark,
+        "mart_dir": mart_dir,
+        "output_dir": output_dir,
+        "artifact_dir": artifact_dir,
+    }
 
     # ── 1. Demand Forecast ────────────────────────────────────────────────────
-    logger.info("[1/4] Building demand features...")
+    logger.info("[1/4] Running Demand Forecast (GBTRegressor)...")
     try:
-        df_demand = build_demand_features(cleaned_dir)
-        summary["demand_forecast"] = train_demand_forecast_python(
-            df_demand, output_dir, artifact_dir
-        )
+        summary["demand_forecast"] = train_demand_forecast(**common_kwargs)
         logger.info(
             "[1/4] Demand Forecast complete — VAL RMSE=%.4f",
             summary["demand_forecast"]["metrics"]["validation"]["rmse"],
@@ -87,10 +78,9 @@ def run_python_ml_pipeline(
         summary["demand_forecast"] = {"status": "FAILED", "error": str(exc)}
 
     # ── 2. Wastage Risk ───────────────────────────────────────────────────────
-    logger.info("[2/4] Building wastage features...")
+    logger.info("[2/4] Running Wastage Risk (GBTClassifier)...")
     try:
-        df_wastage = build_wastage_features(cleaned_dir)
-        summary["wastage_risk"] = train_wastage_risk_python(df_wastage, output_dir, artifact_dir)
+        summary["wastage_risk"] = train_wastage_risk(**common_kwargs)
         logger.info(
             "[2/4] Wastage Risk complete — VAL ROC-AUC=%.4f",
             summary["wastage_risk"]["metrics"]["validation"]["roc_auc"],
@@ -100,10 +90,9 @@ def run_python_ml_pipeline(
         summary["wastage_risk"] = {"status": "FAILED", "error": str(exc)}
 
     # ── 3. Churn Risk ─────────────────────────────────────────────────────────
-    logger.info("[3/4] Building churn/RFM features...")
+    logger.info("[3/4] Running Churn Risk (GBTClassifier)...")
     try:
-        df_churn = build_churn_features(cleaned_dir)
-        summary["churn_risk"] = train_churn_risk_python(df_churn, output_dir, artifact_dir)
+        summary["churn_risk"] = train_churn_risk(**common_kwargs)
         logger.info(
             "[3/4] Churn Risk complete — VAL ROC-AUC=%.4f",
             summary["churn_risk"]["metrics"]["validation"]["roc_auc"],
@@ -113,13 +102,9 @@ def run_python_ml_pipeline(
         summary["churn_risk"] = {"status": "FAILED", "error": str(exc)}
 
     # ── 4. Customer Segmentation ──────────────────────────────────────────────
-    logger.info("[4/4] Running Customer Segmentation (KMeans)...")
+    logger.info("[4/4] Running Customer Segmentation (KMeans k=4)...")
     try:
-        # Reuse churn features (same RFM base)
-        df_seg = build_churn_features(cleaned_dir) if "df_churn" not in dir() else df_churn
-        summary["customer_segmentation"] = train_customer_segmentation_python(
-            df_seg, output_dir, artifact_dir
-        )
+        summary["customer_segmentation"] = train_customer_segmentation(**common_kwargs)
         logger.info(
             "[4/4] Segmentation complete — Silhouette=%.4f",
             summary["customer_segmentation"]["silhouette_score"],
@@ -137,14 +122,14 @@ def run_python_ml_pipeline(
     )
 
     logger.info("=" * 60)
-    logger.info("Python ML Pipeline %s in %.2fs", summary["status"], total_sec)
+    logger.info("Spark ML Pipeline %s in %.2fs", summary["status"], total_sec)
     logger.info("=" * 60)
     return summary
 
 
 if __name__ == "__main__":
-    result = run_python_ml_pipeline()
-    print("\n--- PYTHON ML PIPELINE SUMMARY ---")
+    result = run_spark_ml_pipeline()
+    print("\n--- SPARK ML PIPELINE SUMMARY ---")
     for task, meta in result.items():
         if isinstance(meta, dict) and "metrics" in meta:
             val = meta["metrics"].get("validation", {})
