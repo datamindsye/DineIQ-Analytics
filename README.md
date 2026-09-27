@@ -1,231 +1,320 @@
 # DineIQ Analytics — Data Science Intelligence Arena
 
-A restaurant analytics and intelligence platform built for high scale data quality, dual independent analytical pipelines (Apache Spark / PySpark and Python Data Science / scikit-learn), evidence based business recommendations, and interactive dashboards.
+A comprehensive restaurant analytics and decision intelligence platform designed to demonstrate dual independent analytical pipelines (Apache Spark / PySpark and Python Data Science / scikit-learn), high-scale data quality profiling, evidence-based business recommendations, what-if scenario simulations, and interactive executive dashboards.
 
 ---
 
-## Architecture Overview
+## 1. Project Overview
 
-DineIQ Analytics follows a **Modular Monolith** pattern:
-- **Frontend (`apps/web`)**: React 19 + TypeScript + Vite + Plotly.js for interactive visualizations.
-- **Backend (`apps/api`)**: FastAPI providing asynchronous REST endpoints, JWT authentication, and RBAC authorization.
-- **Application Database (`packages/db`)**: PostgreSQL for application metadata, users, roles, job tracking, and model registries via SQLAlchemy 2.0 and Alembic.
-- **Analytical Storage (`data/marts`)**: Apache Parquet for high volume data snapshots and precomputed feature marts.
-- **Dual Analytics Pipelines**:
-  - **Spark Pipeline (`packages/pipeline_spark`)**: PySpark, Spark SQL, and Spark MLlib for distributed processing.
-  - **Python Pipeline (`packages/pipeline_python`)**: Pandas, NumPy, and scikit-learn for independent data science.
-- **Comparison Engine (`packages/comparison`)**: Unified cross pipeline evaluation against mathematical contracts.
+Modern multi-unit restaurant operations face complex operational, pricing, and margin challenges:
+- **Menu Profitability vs. Popularity**: High-volume dishes often conceal razor-thin or negative contribution margins, while highly profitable dishes languish without marketing support.
+- **Wastage & Spoilage**: Food waste occurs at both the kitchen preparation level and the raw inventory level, driving unnecessary cost loss.
+- **Promotion Cannibalization**: Misconfigured marketing campaigns can create "promotion traps" where order volumes spike while total net margin collapses.
+- **Demand Fluctuation & Kitchen Bottlenecks**: Intra-day rush hours, day-of-week surges, and channel shifts (dine-in vs. delivery) strain staffing and table turn rates.
+- **Customer Churn & Retention**: Identifying at-risk high-value customers requires multi-dimensional Recency, Frequency, and Monetary (RFM) modeling.
+
+**DineIQ Analytics** addresses these challenges through an end-to-end data science and decision intelligence platform that processes raw transactional, operational, and customer data into actionable business intelligence.
 
 ---
 
-## Repository Structure
+## 2. Core Architecture
+
+The platform follows a **Modular Monolith** pattern with strict architectural separation between layers:
 
 ```
-DineIQ-Analytics/
-|-- apps/
-|   |-- web/                           # React + TypeScript frontend
-|   |   |-- src/
-|   |   |   |-- components/            # UI components and Plotly chart wrappers
-|   |   |   |-- pages/                 # Dashboard, Pipelines, and Health views
-|   |   |   |-- services/              # API client methods
-|   |   |   `-- types/                 # TypeScript interfaces
-|   `-- api/                           # FastAPI backend application
-|       |-- routers/                   # Health, analytics, and jobs routers
-|       |-- dependencies/              # Dependency injection helpers
-|       `-- main.py                    # Application entrypoint
-|-- packages/
-|   |-- core/                          # Domain models, contracts, and configuration
-|   |-- db/                            # PostgreSQL metadata layer and migrations
-|   |-- pipeline_spark/                # PySpark ingestion and MLlib pipeline
-|   |-- pipeline_python/               # Independent Python DS pipeline
-|   |-- comparison/                    # Cross pipeline evaluation runner
-|   `-- common/                        # Logging, security, and shared utilities
-|-- data/                              # Local storage directory (git ignored)
-|   |-- snapshots/                     # Raw and clean dataset snapshots
-|   |-- marts/                         # Precomputed analytical outputs (Parquet)
-|   `-- artifacts/                     # Model weights and manifests
-|-- docs/
-|   |-- scope/                         # Project scope and feature index
-|   `-- specs/                         # Architecture specifications
-`-- tests/                             # Test suites
-    |-- unit/                          # Unit tests (config, security, contracts)
-    `-- api/                           # API smoke and health tests
+Raw Restaurant Data (11 Domain Tables)
+  │
+  ▼
+Data Quality & Profiling Subsystem (Nulls, Duplicates, Referential Integrity, Financial Validity)
+  │
+  ▼
+Cleaning & Defect Quarantine Isolation (quarantine reasons appended, 0 variance reconciliation)
+  │
+  ▼
+Immutable Clean Parquet Snapshot (`data/cleaned/competition_benchmark_v1/`)
+  │
+  ▼
+Apache Spark Analytical Pipeline & Feature Engineering
+  │
+  ▼
+12 Precomputed Analytical Marts (`data/marts/spark/*.parquet`)
+  │
+  ├──────────────────────────────────────────────┐
+  ▼                                              ▼
+Spark MLlib Pipeline                   Independent Python ML Pipeline
+(Distributed ML, Feature Prep)         (scikit-learn, Time-Series Modeling)
+  │                                              │
+  └──────────────────────┬───────────────────────┘
+                         ▼
+             Dual Pipeline Model Comparison
+                         │
+                         ▼
+        Decision Intelligence & Recommendations
+                         │
+                         ▼
+              What-If Scenario Simulation
+                         │
+                         ▼
+                FastAPI Backend API
+                         │
+                         ▼
+             React + Vite + Plotly Dashboards
 ```
 
 ---
 
-## Prerequisites
+## 3. Technology Stack
 
-1. **Python**: Version 3.10 or higher (Python 3.13 supported)
-2. **Node.js**: Version 18 or higher (Node 24 supported) with `npm`
-3. **Java** (Optional for local PySpark): JRE 11 or 17
-4. **PostgreSQL** (Optional for initial startup, required for persistent metadata): PostgreSQL 14+
+### Backend
+- **Framework**: FastAPI (asynchronous REST endpoints, standardized `ErrorEnvelope` responses)
+- **Validation & Settings**: Pydantic v2, Pydantic Settings
+- **ORM & Migrations**: SQLAlchemy 2.0, Alembic
+- **Database**: PostgreSQL (application metadata, users, roles, job runs, model versions, audit logs)
+- **Security**: JWT authentication, Role-Based Access Control (RBAC) with 4 roles (`Admin`, `StoreManager`, `DataScientist`, `Cashier`), bcrypt password hashing
+
+### Data Engineering
+- **Big Data Engine**: Apache Spark 4.2.0 / PySpark
+- **Analytical Query**: Spark SQL, PySpark DataFrame API (windowing, ranking, aggregations)
+- **Columnar Engine**: PyArrow (zero-copy Parquet reading in services)
+- **Storage Format**: Apache Parquet (Snappy-compressed)
+
+### Data Science / Machine Learning
+- **Python ML**: Pandas, NumPy, scikit-learn (independent pipeline)
+- **Spark ML**: Spark MLlib (planned for distributed modeling)
+- *Note: Machine learning models and training are scheduled for the upcoming ML track and are NOT yet trained.*
+
+### Frontend
+- **Core**: React 19, TypeScript
+- **Build Tool**: Vite
+- **Visualizations**: Plotly.js
+
+### Testing & Code Quality
+- **Test Runner**: pytest, pytest-asyncio, FastAPI TestClient
+- **Linter & Formatter**: Ruff (Python target 3.10+)
+- **Frontend Linter**: Oxlint (TypeScript)
+- **Git Hooks**: pre-commit
 
 ---
 
-## Setup & Getting Started
+## 4. Benchmark Dataset
 
-### 1. Environment Configuration
+The system includes a deterministic synthetic data generator producing realistic multi-unit restaurant transactions across 365 calendar days (year 2025).
 
-Copy the example environment file:
+### Verified Entity Cardinality
+- **Customers**: 50,000 registered customers
+- **Restaurants**: 20 multi-unit locations across 4 cities and 3 dining formats
+- **Menu Categories**: 10 distinct food and beverage categories
+- **Menu Items**: 150 dishes with standard recipes, prep times, and base costs
+- **Pricing History**: 1,500 historical price-change records (SCD Type 2)
+- **Promotions**: 25 marketing campaigns (including intentional promotion trap scenarios)
+- **Raw Orders**: 100,508 orders
+- **Raw Order Line Items**: 1,006,051 line items
+- **Customer Ratings**: 100,000 ratings with satisfaction scores and text reviews
+- **Inventory Records**: 3,000 stock tracking logs
+- **Wastage Records**: 50,000 operational wastage events
+
+### Master Record Reconciliation
+- **Total Raw Records**: **1,311,264**
+- **Cleaned Records Output**: **1,302,220**
+- **Quarantined Defective Records**: **9,044**
+- **Mathematical Lineage Reconciliation**:
+  $$1,311,264 \text{ raw} = 1,302,220 \text{ clean} + 9,044 \text{ quarantined} \quad [0 \text{ variance}]$$
+- **Overall Cleanliness Rate**: **99.31%**
+
+---
+
+## 5. Data Quality & Cleaning Subsystem
+
+The data quality pipeline profiles every batch against 5 categories of rules without modifying raw sources:
+1. **Missing Values**: Permissible business nulls (e.g., guest checkouts, missing review comments) are preserved; prohibited nulls in primary or foreign keys are quarantined.
+2. **Duplicate Records**: Duplicate order IDs and duplicate line-item IDs are detected and isolated.
+3. **Price & Quantity Validity**: Negative line item prices, zero order quantities, and invalid tax calculations are quarantined.
+4. **Temporal Consistency**: Future-dated timestamps beyond the snapshot cutoff are quarantined.
+5. **Referential Integrity**: Cascading quarantine ensures that if a parent order is quarantined, its child line items are quarantined under `ORPHANED_ORDER_PARENT`.
+6. **Financial Consistency**: Line net revenue and line contribution margin adhere strictly to point-in-time pricing and cost formulas:
+   $$\text{Line Net Revenue} = (\text{quantity} \times \text{unit\_price\_at\_sale}) - \text{line\_discount}$$
+   $$\text{Line Contribution Margin} = \text{Line Net Revenue} - (\text{quantity} \times \text{unit\_cost\_at\_sale})$$
+7. **Valid Operational States**: Cancelled and Voided orders are preserved with valid operational flags for churn and operational bottleneck analysis.
+
+---
+
+## 6. Phase 3 Apache Spark Analytical Pipeline
+
+The Phase 3 analytical pipeline executes natively in Apache Spark 4.2.0, consuming the clean Parquet dataset and materializing twelve precomputed analytical marts in `data/marts/spark/*.parquet`:
+
+| # | Mart Name | Grain | Row Count | Purpose |
+| :---: | :--- | :--- | :---: | :--- |
+| 1 | `mart_menu_performance` | `restaurant + item` | 3,000 | 9-dimension menu engineering, composite score, 4 classifications, 10 tricky flags. |
+| 2 | `mart_customer_rfm` | `customer` | 50,000 | Recency, Frequency, Monetary quintile scoring and 7 customer loyalty segments. |
+| 3 | `mart_basket_analysis` | `item_pair` | 11,175 | Support, confidence, and association lift for co-ordered menu item pairs. |
+| 4 | `mart_peak_analysis` | `restaurant + day + hour` | 1,643 | Hourly and day-of-week volume distributions, rush-hour indicators. |
+| 5 | `mart_location_performance` | `restaurant + month` | 253 | Store-level margins, labor efficiency, customer counts, and seat turn rates. |
+| 6 | `mart_channel_performance` | `restaurant + channel + month` | 976 | Dine-in, Takeout, and Delivery revenue, commission drag, and channel shares. |
+| 7 | `mart_wastage` | `restaurant + item/ingr + week` | 151,029 | Dual-level wastage tracking (prepared dish vs raw ingredient) and high-risk target. |
+| 8 | `mart_pricing` | `event (item/restaurant)` | 1,500 | 28-day pre/post price change volume response and price elasticity of demand. |
+| 9 | `mart_promotions` | `promotion + restaurant` | 320 | Order-item-level promotion redemption, incremental margin, and promotion traps. |
+| 10 | `mart_ratings_anomalies` | `item/restaurant + week` | 61,322 | Sentiment-rating divergence and sudden customer satisfaction drops. |
+| 11 | `mart_sales_anomalies` | `restaurant + day` | 7,313 | 14-day rolling baseline Z-scores, volume spikes, drops, and zero-sales exceptions. |
+| 12 | `mart_demand_historical` | `restaurant + item + day` | 450,779 | Calendar aggregations, chronological split windows, and seasonal-naive baselines. |
+| **TOTAL** | **12 Analytical Marts** | — | **741,310** | **100% Real Spark-Materialized Parquet Records** |
+
+---
+
+## 7. Analytical Intelligence Contracts
+
+### Menu Intelligence
+- **Multi-Factor Percentile Model**:
+  $$\text{Composite Score} = 0.25 S_{\text{Demand}} + 0.25 S_{\text{Profit}} + 0.15 S_{\text{Customer}} + 0.15 S_{\text{Wastage}} + 0.10 S_{\text{Trend}} + 0.10 S_{\text{PromoIndep}}$$
+- **Four Standard Gated Classes**:
+  - `Profit Driver`: High Margin ($\ge 50$th percentile) AND High Demand ($\ge 50$th percentile)
+  - `Volume Driver`: Low/Med Margin ($< 50$th percentile) AND High Demand ($\ge 50$th percentile)
+  - `Hidden Opportunity`: High Margin ($\ge 50$th percentile) AND Low/Med Demand ($< 50$th percentile)
+  - `Low Performer`: Low/Med Margin ($< 50$th percentile) AND Low/Med Demand ($< 50$th percentile)
+- **Ten Tricky-Case Boolean Evidence Flags**:
+  1. `flag_high_selling_loss_making`: High volume with unit contribution margin $\le 0$.
+  2. `flag_profitable_rarely_purchased`: Top 25% margin but bottom 25% volume.
+  3. `flag_popular_high_wastage`: Top 25% volume but bottom 25% wastage health.
+  4. `flag_high_rating_low_profitability`: Top 25% rating but bottom 25% margin.
+  5. `flag_low_rating_high_sales`: Bottom 25% rating but top 25% volume.
+  6. `flag_promotion_dependent`: Organic sales ratio $< 30\%$.
+  7. `flag_location_divergence`: Item classification differs across store locations.
+  8. `flag_weekend_only`: $\ge 65\%$ of volume sold on Saturdays and Sundays.
+  9. `flag_seasonal_item`: Marked seasonal with activity concentrated in specific calendar windows.
+  10. `flag_insufficient_history`: Total active observation days $< 14$.
+
+### Wastage Intelligence
+- **Dual-Path Routing**:
+  - `PREPARED_DISH`: Linked via `source_menu_item_id`; wastage ratios computed against prepared units sold.
+  - `RAW_INGREDIENT`: Linked via `source_restaurant_id` + `ingredient_name`; ratios computed against inventory stock.
+  - Raw ingredient waste and prepared dish waste are never blended into a single composite numerator.
+- **Approved Target Definition (`next_week_wastage_risk`)**:
+  $$\text{High Risk (1)} \iff (\text{waste\_cost\_ratio} > 0.05) \lor (\text{waste\_quantity\_ratio} > 0.10)$$
+  - Verified distribution across 151,029 mart rows: 14,639 high risk (9.69%) and 136,390 low risk (90.31%).
+
+### Promotion Intelligence
+- **Line-Level Attribution**: Promotions are joined strictly at the order-item level (`order_items.source_promotion_id = promotions.source_promotion_id`). The header `orders` table contains no promotion foreign key.
+- **Promotion Traps**: Campaigns where discounts exceed margins or where discounts reach $\ge 50\%$ with negative net contribution margin are explicitly identified (`is_promotion_trap = True`).
+
+### Sales Anomaly Intelligence & Anti-Leakage
+- **Leakage-Free Rolling Baseline**: The 14-day rolling mean and standard deviation are computed over `rowsBetween(-14, -1)`, strictly isolating prior historical observations and excluding the current day $t$ from its own baseline calculation.
+- **Initial Days Handling**: Days with zero prior history evaluate to null baselines and default to normal anomaly status without synthetic distortion.
+
+### Demand Time-Series & Chronological Splits
+- **Historical Demand Mart**: `mart_demand_historical` contains calendar rollups and seasonal-naive baselines ($y_{t-1}$).
+- **Anti-Leakage Note**: The historical demand mart serves as feature engineering and comparative baseline data; it is **NOT** the final ML forecast. Final model forecasts will be generated in Phase 4.
+- **Chronological Split Manifest**:
+  - `TRAIN`: 2025-01-01 → 2025-08-31 (300,129 item-week observations)
+  - `VALIDATION`: 2025-09-01 → 2025-10-31 (75,165 item-week observations)
+  - `TEST`: 2025-11-01 → 2025-11-30 (36,821 item-week observations)
+  - `UNSEEN_COMPARISON`: 2025-12-01 → 2025-12-31 (38,664 item-week observations reserved for final pipeline evaluation)
+
+---
+
+## 8. Current Project Status
+
+### Completed
+- **Phase 1: Foundation**: Modular monolith structure, FastAPI backend, PostgreSQL operational schema, JWT/RBAC security, audit logging.
+- **Phase 2: Data Foundation**: Synthetic dataset generator (1.31M rows), data quality profiling, defect quarantine isolation, clean Parquet snapshot.
+- **Phase 3: Data Engineering & Spark Marts**: Spark session factory, schema mapping, joins, 12 analytical marts, rolling baseline correction, regression tests, and physical Parquet materialization (741,310 records).
+
+### In Progress / Upcoming (Next Phases)
+- **Phase 4A**: Machine Learning Feature Engineering (leakage-free feature matrices).
+- **Phase 4B**: Apache Spark MLlib Models (distributed demand forecasting, wastage classification, churn risk).
+- **Phase 4C**: Independent Python ML Models (scikit-learn, time-series forecasting, wastage models).
+- **Phase 4D**: Cross-Pipeline Model Evaluation & Comparison against Unseen Split (Dec 2025).
+- **Phase 5**: Decision Intelligence & Recommendations Engine, What-If Scenario Simulations.
+- **Phase 6**: Final FastAPI Analytical Endpoints, Interactive React + Vite + Plotly BI Dashboards.
+- **Phase 7**: Competition Documentation, Demonstration Video, and Submission Package.
+
+---
+
+## 9. Verification & Code Quality
+
+Current verified status of the repository:
+- **Pytest Automated Tests**: **108 passed out of 108 tests** (100% pass rate in ~71s)
+- **Ruff Static Analysis**: **0 errors, 0 warnings** (`ruff check .` passed)
+- **Ruff Code Formatting**: Verified compliant with project configuration
+
+---
+
+## 10. Execution Instructions
+
+The following commands exist and are runnable in the repository:
+
+### 1. Environment Setup
 ```bash
+# Install Python dependencies (including PySpark)
+pip install -r requirements.txt
+
+# Copy example environment configuration
 cp .env.example .env
 ```
-Default configuration values in `.env`:
-```ini
-ENVIRONMENT=development
-DEBUG=true
-APP_NAME="DineIQ Analytics API"
-APP_HOST=0.0.0.0
-APP_PORT=8000
-DATABASE_URL=postgresql+psycopg2://dineiq_user:dineiq_password@localhost:5432/dineiq_analytics
-SECRET_KEY=change-this-in-production-super-secret-key-min-32-chars
+
+### 2. Run Automated Test Suite
+```bash
+# Execute full backend and analytical test suite (108 tests)
+python -m pytest tests/
+
+# Execute targeted mart tests
+python -m pytest tests/unit/test_marts.py -v
 ```
 
-### 2. Backend Setup
-
-Install Python dependencies:
+### 3. Run Static Analysis & Formatting
 ```bash
-pip install -r requirements.txt
+# Check Python code quality with Ruff
+ruff check .
+
+# Check formatting
+ruff format --check .
 ```
 
-Run database migrations (once PostgreSQL is running):
+### 4. Generate Synthetic Benchmark Dataset
 ```bash
-alembic upgrade head
+# Generates 1.31M raw records under data/snapshots/competition_benchmark_v1/
+python -m packages.common.generator.cli --profile competition --snapshot-id competition_benchmark_v1
 ```
 
-Start the FastAPI backend server:
+### 5. Profile & Clean Dataset
 ```bash
+# Profiles raw data, isolates 9,044 defects to quarantine, exports 1.30M clean rows
+python -m packages.common.quality.cli --snapshot-dir data/snapshots/competition_benchmark_v1 --cleaned-dir data/cleaned --quarantine-dir data/quarantine
+```
+
+### 6. Execute Apache Spark Analytical Pipeline
+```bash
+# Materializes all 12 analytical marts (741,310 Parquet rows) into data/marts/spark/
+python -m packages.pipeline_spark.runner
+```
+
+### 7. Run FastAPI Backend Server
+```bash
+# Start backend API (requires PostgreSQL for persistent operations)
 uvicorn apps.api.main:app --reload --host 0.0.0.0 --port 8000
 ```
-- Interactive API Documentation: [http://localhost:8000/docs](http://localhost:8000/docs)
-- Health Check: [http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health)
+- API Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+- Health Probe: [http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health)
 
-### 3. Frontend Setup
-
-Navigate to the frontend directory:
+### 8. Run React Frontend Development Server
 ```bash
 cd apps/web
 npm install
 npm run dev
 ```
-Open your browser at [http://localhost:5173](http://localhost:5173).
 
-### 4. Synthetic Dataset Generation & Data Quality Pipeline
-
-DineIQ Analytics includes a deterministic synthetic dataset generator and an automated data quality and cleaning engine supporting dual independent analytical pipelines:
-
-#### Step A: Generate Synthetic Benchmark Dataset
-Generate the 11 business domain tables (1.31M raw records featuring 17 realistic complexity patterns) using a fixed seed:
-```bash
-# Generate competition benchmark profile (default seed: 42)
-python -m packages.common.generator.cli --profile competition --snapshot-id competition_benchmark_v1
-```
-Available profiles: `small` (test), `medium` (staging), `competition` (1M+ rows benchmark). Snapshots are stored in `data/snapshots/<snapshot_id>/`.
-
-#### Step B: Profile and Clean the Dataset
-Run data quality profiling, quarantine defective records, and export clean Parquet partitions:
-```bash
-# Profile only (inspect schema, nulls, duplicates, and financial formula health)
-python -m packages.common.quality.cli --snapshot-dir data/snapshots/competition_benchmark_v1 --profile-only
-
-# Execute full profiling, defect quarantine isolation, and clean Parquet export
-python -m packages.common.quality.cli --snapshot-dir data/snapshots/competition_benchmark_v1 --cleaned-dir data/cleaned --quarantine-dir data/quarantine
-```
-
-#### Storage Architecture & Data Safety
-- **Raw Snapshots**: `data/snapshots/<snapshot_id>/` (immutable source of truth)
-- **Clean Parquet**: `data/cleaned/<snapshot_id>/` (authoritative starting point for Spark and Python pipelines)
-- **Quarantine Store**: `data/quarantine/<snapshot_id>/` (isolated anomalies with defect lineage)
-- **Temporal Split**: `data/cleaned/<snapshot_id>/split_manifest.json` (4-way chronological split: TRAIN 66.66%, VALIDATION 16.61%, TEST 8.23%, UNSEEN_COMPARISON 8.49%)
-- **Git Safety Guarantee**: All generated Parquet files (`data/snapshots/*`, `data/cleaned/*`, `data/quarantine/*`, `data/marts/*`) are strictly excluded via `.gitignore`. Folder structures are preserved using tracked `.gitkeep` markers.
+### Unimplemented Features Notice
+The following execution workflows are scheduled for subsequent phases and are **NOT IMPLEMENTED YET**:
+- Spark MLlib model training CLI: *NOT IMPLEMENTED YET*
+- Python scikit-learn model training CLI: *NOT IMPLEMENTED YET*
+- Cross-pipeline comparison evaluation runner CLI: *NOT IMPLEMENTED YET*
+- Recommendation generation engine CLI: *NOT IMPLEMENTED YET*
 
 ---
 
-## Code Quality & Developer Tooling
+## 11. Team Workflow & Repository Rules
 
-To ensure consistency across the 5-person team, the repository enforces automated linting, formatting, type checking, and pre-commit hooks.
-
-### 1. Python Code Quality (Ruff)
-
-We use **Ruff** for high-speed Python linting and formatting:
-```bash
-# Check code for lint errors and import order
-ruff check .
-
-# Automatically fix fixable lint errors
-ruff check --fix .
-
-# Format code according to project style
-ruff format .
-
-# Check formatting without modifying files
-ruff format --check .
-```
-
-### 2. Frontend Code Quality (Oxlint & TypeScript)
-
-From `apps/web`:
-```bash
-# Fast linting across frontend TypeScript files
-npx oxlint
-
-# Type checking and production bundle verification
-npm run build
-```
-
-### 3. Pre-Commit Hooks
-
-Pre-commit hooks automatically check staged files before each commit, preventing syntax errors, unformatted code, secret leaks, and accidental commits of generated datasets:
-
-```bash
-# Install git hooks into your local repository (run once)
-pre-commit install
-
-# Manually run all hooks against all files
-pre-commit run --all-files
-```
-
-Active pre-commit checks:
-- **Ruff Linter & Formatter**: Automatically formats and lints Python code.
-- **Oxlint**: Validates frontend TypeScript components.
-- **Typecheck & Build**: Verifies that frontend builds without errors.
-- **Large File Protection**: Rejects files larger than 1MB (prevents accidental commits of large dataset snapshots).
-- **Secret Detection**: Checks for private keys and credentials.
-- **File Hygiene**: Removes trailing whitespace, ensures single newline at EOF, validates JSON/YAML.
-
-### 4. Continuous Integration (GitHub Actions)
-
-Every pull request and push to `main` triggers automated CI checks (`.github/workflows/ci.yml`):
-1. **Backend Job**: Sets up Python 3.13, runs `ruff check`, `ruff format --check`, and executes the `pytest` test suite.
-2. **Frontend Job**: Sets up Node 20, runs `npx oxlint`, and executes `npm run build` (type checking and bundling).
-
----
-
-## Team Workflow & Git Conventions
-
-1. **Branching**: Create feature branches from `main` (e.g. `feat/menu-analytics`, `feat/customer-rfm`).
-2. **Never Commit Secrets or Generated Datasets**: Ensure `.env`, `data/snapshots/*`, `data/cleaned/*`, `data/quarantine/*`, `data/marts/*`, and `data/artifacts/*` are never added to Git.
-3. **Commit Hygiene**: Run `pre-commit run --all-files` before pushing. Write clear, descriptive commit messages.
-4. **Code Review**: Open a Pull Request to `main`. Ensure all CI checks pass before requesting reviews.
-
----
-
-## PostgreSQL Configuration
-
-To run PostgreSQL locally with Docker:
-```bash
-docker run --name dineiq-postgres -e POSTGRES_USER=dineiq_user -e POSTGRES_PASSWORD=dineiq_password -e POSTGRES_DB=dineiq_analytics -p 5432:5432 -d postgres:16
-```
-Or use a local native PostgreSQL installation matching the credentials in `.env`.
-
----
-
-## Documentation & Architecture References
-
-- **AI Usage Declaration**: [AI_USAGE.md](AI_USAGE.md) (governance and human oversight statement)
-- **Authoritative Data Dictionary**: [docs/data-dictionary.md](docs/data-dictionary.md) (domain schemas and financial formulas)
-- **Dataset Forensic Inspection Report**: [docs/reports/dataset_inspection_report.md](docs/reports/dataset_inspection_report.md) (11-table Parquet audit)
-- **Development Log**: [docs/development_log.md](docs/development_log.md) (chronological record of foundation phases)
-- **Data Contract & Generator Architecture**: [docs/specs/0003-dataset-contract-and-generation-strategy/](docs/specs/0003-dataset-contract-and-generation-strategy/index.md)
-- **Data Quality & Cleaning Architecture**: [docs/specs/0004-data-quality-and-cleaning/](docs/specs/0004-data-quality-and-cleaning/index.md)
+- **Feature Branches**: All active work must be conducted on dedicated feature branches (e.g. `feature/phase3-spark-marts`). Never push directly to `main`.
+- **Meaningful Commits**: Every commit must represent a coherent, tested unit of work with clear commit messages.
+- **No Secrets**: Never commit `.env` files, API keys, or database credentials.
+- **No Bulk Data in Git**: All generated data folders (`data/snapshots/*`, `data/cleaned/*`, `data/quarantine/*`, `data/marts/*`, `data/artifacts/*`) are strictly excluded from Git tracking via `.gitignore`.
+- **AI Usage Transparency**: All AI assistance must be disclosed and documented in `AI_USAGE.md` in accordance with competition governance rules.
+- **Code Review**: Every pull request must pass automated pytest suites, Ruff linting, and human peer review before merging.

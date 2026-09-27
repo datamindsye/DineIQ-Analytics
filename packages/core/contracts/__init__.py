@@ -1,5 +1,16 @@
 """Core contracts package for formal mathematical and pipeline interfaces."""
 
+from packages.core.contracts.analytical_contracts import (
+    DemandForecastContract,
+    MenuPerformanceCategory,
+    MenuPerformanceContract,
+    MenuTrickyFlags,
+    PriceElasticityContract,
+    PriceSensitivityClass,
+    PromotionContract,
+    WastageRiskClass,
+    WastageRiskContract,
+)
 from packages.core.contracts.dataset_contract import (
     ARROW_SCHEMAS,
     CANONICAL_CATEGORIES,
@@ -38,6 +49,15 @@ from packages.core.contracts.evaluation import (
 )
 
 __all__ = [
+    "WastageRiskClass",
+    "WastageRiskContract",
+    "MenuPerformanceCategory",
+    "MenuPerformanceContract",
+    "MenuTrickyFlags",
+    "PriceSensitivityClass",
+    "PriceElasticityContract",
+    "PromotionContract",
+    "DemandForecastContract",
     "EvaluationContract",
     "EvaluationMetricResult",
     "PipelineComparisonResult",

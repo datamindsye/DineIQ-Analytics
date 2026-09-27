@@ -208,18 +208,85 @@ The repository demonstrates a verifiable and unbroken end-to-end data processing
 
 ---
 
-## Git / Contribution Boundary
+---
 
-- All Phase 1 and Phase 2 implementations are currently present in the working tree and fully verified.
-- The working tree remains uncommitted in accordance with the gate review protocol.
-- Staging and preparing the Phase 2 commit will be executed following final gate approval.
+## Phase 3 — Apache Spark Analytical Pipeline & Feature Engineering
+
+Phase 3 constructed the distributed data engineering layer, analytical feature transformations, and 12 precomputed Parquet analytical marts executing natively on Apache Spark 4.2.0.
+
+### 1. Planning & Architectural Specifications
+- **Authoritative Specification**: Captured in `docs/specs/0005-spark-analytical-pipeline-and-marts/index.md`.
+- **Approved Architecture Decision Pack**:
+  - Multi-factor menu classification model: Demand (25%), Profitability (25%), Customer Signal (15%), Wastage Health (15%), Sales Trend (10%), Promotion Independence (10%).
+  - 4 standard menu classes (`Profit Driver`, `Volume Driver`, `Hidden Opportunity`, `Low Performer`) with 10 explicit boolean edge-case flags.
+  - Dual-path wastage routing (`PREPARED_DISH` vs. `RAW_INGREDIENT`) with binary `next_week_wastage_risk` target (`waste_cost_ratio > 0.05 OR waste_quantity_ratio > 0.10`).
+  - Order-item-level promotion attribution (`order_items.source_promotion_id = promotions.source_promotion_id`) isolating 50% promotion margin traps.
+  - Leakage-safe chronological splitting: TRAIN (Jan-Aug 2025), VALIDATION (Sep-Oct 2025), TEST (Nov 2025), UNSEEN_COMPARISON (Dec 2025).
+
+### 2. Forensic Source Schema Audit
+- Cross-checked all Spark schema mappings against actual Parquet files in `data/cleaned/competition_benchmark_v1/`.
+- Verified physical fields: `menu_items.current_base_price`, `menu_items.current_base_cost`, `menu_items.is_seasonal`, `pricing_history.effective_to IS NULL`, `order_items.source_promotion_id`, `wastage.quantity_lost`, and `inventory.ingredient_name`.
+- Eliminated all potential references to non-existent fields prior to pipeline construction.
+
+### 3. Spark Environment Verification
+- Configured local standalone SparkSession in `packages/pipeline_spark/session.py` with PySpark 4.2.0.
+- Configured native Windows Hadoop 3.3.0 binary environment (`winutils.exe`, `hadoop.dll`) under `C:\hadoop` to ensure local `FileOutputCommitter` and Snappy Parquet directory writes succeed without win32 exceptions.
+- Executed smoke test verifying Spark driver creation and native DataFrame query processing.
+
+### 4. Implementation of Spark Pipeline & 12 Analytical Marts
+- Built core pipeline packages in `packages/pipeline_spark/`:
+  - `session.py`: SparkSession builder with dynamic memory allocation and Arrow optimization.
+  - `schemas.py`: Explicit PySpark `StructType` schemas for 11 business domain tables.
+  - `loader.py`: Columnar Parquet loader reading cleaned snapshots into memory.
+  - `joins.py`: Clean multi-table join builder with broadcast optimization and currency casting.
+  - `marts/`: 12 distinct mart generation modules computing metrics using Spark SQL and DataFrame window functions.
+  - `runner.py`: Pipeline execution orchestrator with CLI flags and execution timing.
+- Contract validation codified in `packages/core/contracts/analytical_contracts.py` using Pydantic v2 schemas.
+
+### 5. Physical Parquet Materialization
+- Executed pipeline end-to-end against full competition benchmark dataset (1,302,220 clean records).
+- Materialized all 12 analytical marts into `data/marts/spark/*.parquet`:
+  1. `mart_menu_performance.parquet`: 3,000 records (47 columns)
+  2. `mart_customer_rfm.parquet`: 50,000 records (16 columns)
+  3. `mart_basket_analysis.parquet`: 11,175 records (11 columns)
+  4. `mart_peak_analysis.parquet`: 1,643 records (15 columns)
+  5. `mart_location_performance.parquet`: 253 records (26 columns)
+  6. `mart_channel_performance.parquet`: 976 records (14 columns)
+  7. `mart_wastage.parquet`: 151,029 records (19 columns)
+  8. `mart_pricing.parquet`: 1,500 records (15 columns)
+  9. `mart_promotions.parquet`: 320 records (18 columns)
+  10. `mart_ratings_anomalies.parquet`: 61,322 records (18 columns)
+  11. `mart_sales_anomalies.parquet`: 7,313 records (14 columns)
+  12. `mart_demand_historical.parquet`: 450,779 records (19 columns)
+  - **Total Mart Records**: **741,310 records** materialized with `_SUCCESS` markers.
+
+### 6. Defect Discovery, Correction & Regression Testing
+- **Defect Discovery**: Forensic review identified a baseline leakage defect in `packages/pipeline_spark/marts/sales_anomalies.py`. The window specification `rowsBetween(-13, 0)` included the current day $t$ in its own 14-day rolling average and standard deviation.
+- **Correction Applied**: Updated window frame strictly to `rowsBetween(-14, -1)`, ensuring that day $t$ draws baseline mean and standard deviation exclusively from prior historical observations $\le t-1$. Initial days with no prior history cleanly evaluate to null baselines and default to normal anomaly status without distortion.
+- **Physical Mart Regeneration**: `mart_sales_anomalies.parquet` was regenerated with the corrected logic and verified.
+- **Regression Test Authoring**: Implemented `test_sales_anomalies_rolling_baseline_excludes_current_day` in `tests/unit/test_marts.py` verifying that day $t$ cannot self-contaminate rolling calculations.
+
+### 7. Verification Results
+- **Pytest Automated Test Suite**:
+  - `python -m pytest tests/`
+  - **108 passed out of 108 tests** (100% pass rate in ~71 seconds).
+- **Ruff Static Analysis**:
+  - `ruff check .`
+  - **All checks passed!** (0 errors, 0 warnings).
+- **Dual Pipeline Boundary**:
+  - Clean snapshot remains immutable and read-only.
+  - Zero cross-pipeline leakage: Spark and Python pipelines share only raw snapshots, split manifests, and evaluation contracts.
+- **Final Forensic Gate**:
+  - Phase 3 Release Review certified **PASS — READY FOR COMMIT**.
 
 ---
 
 ## Phase Status
 
-- **Phase 2 implementation**: **COMPLETE**
-- **Phase 2 evidence**: **COMPLETE**
-- **Phase 2 development log**: **COMPLETE**
-- **Phase 2 commit**: **PENDING**
-- **Phase 3 Spark**: **NOT STARTED**
+- **Phase 1 Foundation**: **COMPLETE**
+- **Phase 2 Data Foundation**: **COMPLETE**
+- **Phase 3 Spark Data Engineering & Analytical Marts**: **COMPLETE**
+- **Phase 4 Machine Learning (Spark MLlib & Python ML)**: **NOT STARTED**
+- **Phase 5 Decision Intelligence & Recommendations**: **NOT STARTED**
+- **Phase 6 API & BI Dashboards**: **NOT STARTED**
+
