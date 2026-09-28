@@ -7,8 +7,6 @@ export interface FilterContextType {
   selectedCategory: string;
   setSelectedCategory: (cat: string) => void;
   options: GlobalFilterOptions;
-  currentRole: 'Admin' | 'StoreManager' | 'DataScientist';
-  setCurrentRole: (role: 'Admin' | 'StoreManager' | 'DataScientist') => void;
   isLoading: boolean;
   refreshFilters: () => void;
 }
@@ -27,8 +25,6 @@ export const FilterContext = createContext<FilterContextType>({
   selectedCategory: '',
   setSelectedCategory: () => {},
   options: defaultOptions,
-  currentRole: 'Admin',
-  setCurrentRole: () => {},
   isLoading: false,
   refreshFilters: () => {},
 });

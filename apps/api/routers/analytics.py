@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from apps.api.dependencies.auth import get_optional_user
+from apps.api.dependencies.auth import get_current_user, get_export_user, require_roles
 from packages.core.schemas.common import DataEnvelope
 from packages.core.services.analytics_dashboard_service import (
     calculate_what_if_scenario,
@@ -51,7 +51,9 @@ class WhatIfRequest(BaseModel):
     response_model=DataEnvelope[dict[str, Any]],
     status_code=status.HTTP_200_OK,
 )
-def get_analytics_status() -> DataEnvelope[dict[str, Any]]:
+def get_analytics_status(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> DataEnvelope[dict[str, Any]]:
     """Return status and availability of analytical marts on disk."""
     availability = check_marts_availability()
     return DataEnvelope(data=availability)
@@ -63,7 +65,7 @@ def get_analytics_status() -> DataEnvelope[dict[str, Any]]:
     status_code=status.HTTP_200_OK,
 )
 def get_filters(
-    user: Annotated[User | None, Depends(get_optional_user)] = None,
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> DataEnvelope[dict[str, Any]]:
     """Return global filter lookup dimensions (locations, categories, channels)."""
     options = get_global_filter_options()
@@ -76,7 +78,7 @@ def get_filters(
     status_code=status.HTTP_200_OK,
 )
 def get_executive_kpis(
-    user: Annotated[User | None, Depends(get_optional_user)] = None,
+    current_user: Annotated[User, Depends(require_roles("Admin", "StoreManager", "DataScientist"))],
 ) -> DataEnvelope[dict[str, Any]]:
     """Compute and return top-level executive KPIs from analytical marts."""
     summary = get_executive_summary()
@@ -89,6 +91,9 @@ def get_executive_kpis(
     status_code=status.HTTP_200_OK,
 )
 def get_menu_intelligence(
+    current_user: Annotated[
+        User, Depends(require_roles("Admin", "StoreManager", "DataScientist", "Cashier"))
+    ],
     category_id: str | None = Query(None, description="Category filter"),
     restaurant_id: str | None = Query(None, description="Restaurant filter"),
     classification: str | None = Query(None, description="Classification filter"),
@@ -96,7 +101,6 @@ def get_menu_intelligence(
     search: str | None = Query(None, description="Search query"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: Annotated[User | None, Depends(get_optional_user)] = None,
 ) -> DataEnvelope[dict[str, Any]]:
     """Query menu performance mart with classification, composite scores, and flags."""
     res = get_menu_intelligence_summary(
@@ -117,11 +121,11 @@ def get_menu_intelligence(
     status_code=status.HTTP_200_OK,
 )
 def get_customer_intelligence(
+    current_user: Annotated[User, Depends(require_roles("Admin", "StoreManager", "DataScientist"))],
     segment: str | None = Query(None, description="RFM Segment filter"),
     search: str | None = Query(None, description="Search customer name or ID"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: Annotated[User | None, Depends(get_optional_user)] = None,
 ) -> DataEnvelope[dict[str, Any]]:
     """Query RFM customer segmentation and churn risk predictions."""
     res = get_customer_intelligence_summary(
@@ -139,8 +143,8 @@ def get_customer_intelligence(
     status_code=status.HTTP_200_OK,
 )
 def get_sales_operations(
+    current_user: Annotated[User, Depends(require_roles("Admin", "StoreManager", "DataScientist"))],
     restaurant_id: str | None = Query(None, description="Restaurant filter"),
-    user: Annotated[User | None, Depends(get_optional_user)] = None,
 ) -> DataEnvelope[dict[str, Any]]:
     """Query sales patterns, peak periods, channel share, and location rankings."""
     res = get_sales_and_operations_summary(restaurant_id=restaurant_id)
@@ -153,9 +157,9 @@ def get_sales_operations(
     status_code=status.HTTP_200_OK,
 )
 def get_demand_pricing(
+    current_user: Annotated[User, Depends(require_roles("Admin", "StoreManager", "DataScientist"))],
     menu_item_id: str | None = Query(None, description="Menu item ID"),
     restaurant_id: str | None = Query(None, description="Restaurant ID"),
-    user: Annotated[User | None, Depends(get_optional_user)] = None,
 ) -> DataEnvelope[dict[str, Any]]:
     """Query demand forecast vs actuals and price elasticity analysis."""
     res = get_demand_and_pricing_summary(
@@ -171,8 +175,8 @@ def get_demand_pricing(
     status_code=status.HTTP_200_OK,
 )
 def get_wastage_inventory(
+    current_user: Annotated[User, Depends(require_roles("Admin", "StoreManager", "DataScientist"))],
     restaurant_id: str | None = Query(None, description="Restaurant ID"),
-    user: Annotated[User | None, Depends(get_optional_user)] = None,
 ) -> DataEnvelope[dict[str, Any]]:
     """Query wastage causes, high-risk items, and trends."""
     res = get_wastage_and_inventory_summary(restaurant_id=restaurant_id)
@@ -185,7 +189,7 @@ def get_wastage_inventory(
     status_code=status.HTTP_200_OK,
 )
 def get_promotions_basket(
-    user: Annotated[User | None, Depends(get_optional_user)] = None,
+    current_user: Annotated[User, Depends(require_roles("Admin", "StoreManager", "DataScientist"))],
 ) -> DataEnvelope[dict[str, Any]]:
     """Query promotion impact, traps, and market basket association rules."""
     res = get_promotions_and_basket_summary()
@@ -198,7 +202,7 @@ def get_promotions_basket(
     status_code=status.HTTP_200_OK,
 )
 def get_ratings_anomalies(
-    user: Annotated[User | None, Depends(get_optional_user)] = None,
+    current_user: Annotated[User, Depends(require_roles("Admin", "StoreManager", "DataScientist"))],
 ) -> DataEnvelope[dict[str, Any]]:
     """Query sales and rating anomaly event streams."""
     res = get_ratings_and_anomalies_summary()
@@ -211,11 +215,11 @@ def get_ratings_anomalies(
     status_code=status.HTTP_200_OK,
 )
 def get_comparison_arena(
+    current_user: Annotated[User, Depends(require_roles("Admin", "DataScientist"))],
     task: str | None = Query(
         None, description="Task: demand_forecast, wastage_risk, churn_risk, customer_segmentation"
     ),
     limit: int = Query(50, ge=1, le=500),
-    user: Annotated[User | None, Depends(get_optional_user)] = None,
 ) -> DataEnvelope[dict[str, Any]]:
     """Query Data Science Arena cross-pipeline Spark vs Python evaluation metrics and agreement."""
     res = get_data_science_arena_summary(task=task, limit=limit)
@@ -228,7 +232,7 @@ def get_comparison_arena(
     status_code=status.HTTP_200_OK,
 )
 def get_recommendations_feed(
-    user: Annotated[User | None, Depends(get_optional_user)] = None,
+    current_user: Annotated[User, Depends(require_roles("Admin", "StoreManager", "DataScientist"))],
 ) -> DataEnvelope[list[dict[str, Any]]]:
     """Retrieve actionable, evidence-based recommendations derived from analytical marts."""
     recs = get_actionable_recommendations()
@@ -242,7 +246,7 @@ def get_recommendations_feed(
 )
 def run_what_if_scenario(
     payload: WhatIfRequest,
-    user: Annotated[User | None, Depends(get_optional_user)] = None,
+    current_user: Annotated[User, Depends(require_roles("Admin", "StoreManager", "DataScientist"))],
 ) -> DataEnvelope[dict[str, Any]]:
     """Simulate scenario changes using empirical price elasticity estimates."""
     result = calculate_what_if_scenario(
@@ -259,9 +263,9 @@ def run_what_if_scenario(
     status_code=status.HTTP_200_OK,
 )
 def export_mart_csv(
+    current_user: Annotated[User, Depends(get_export_user)],
     mart_path: str = Query(..., description="Relative path to Parquet mart"),
     limit: int = Query(5000, ge=1, le=50000),
-    user: Annotated[User | None, Depends(get_optional_user)] = None,
 ) -> StreamingResponse:
     """Export analytical mart records as downloadable CSV."""
     try:
@@ -293,8 +297,8 @@ def export_mart_csv(
     status_code=status.HTTP_200_OK,
 )
 def query_analytical_mart(
+    current_user: Annotated[User, Depends(require_roles("Admin", "DataScientist"))],
     mart_path: str = Query(..., description="Relative path to precomputed mart Parquet file"),
-    user: Annotated[User | None, Depends(get_optional_user)] = None,
     limit: int = Query(100, ge=1, le=1000),
 ) -> DataEnvelope[list[dict[str, Any]]]:
     """Query precomputed analytical mart records directly via PyArrow."""

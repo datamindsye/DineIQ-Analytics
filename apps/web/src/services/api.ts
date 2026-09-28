@@ -11,11 +11,14 @@ import type {
   ExecutiveSummaryKPIs,
   GlobalFilterOptions,
   HealthStatus,
+  LoginRequest,
   MenuSummaryResponse,
   PromotionsBasketResponse,
   RatingsAnomaliesResponse,
   RecommendationItem,
   SalesOperationsResponse,
+  TokenResponse,
+  UserResponse,
   WastageInventoryResponse,
   WhatIfRequestPayload,
   WhatIfResponse,
@@ -54,6 +57,13 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        localStorage.removeItem('dineiq_token');
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          window.dispatchEvent(new CustomEvent('dineiq:unauthorized'));
+        }
+      }
+
       let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       let errorCode = 'REQUEST_FAILED';
       try {
@@ -84,6 +94,19 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 }
 
 export const apiService = {
+  login: async (credentials: LoginRequest): Promise<TokenResponse> => {
+    const res = await request<DataEnvelope<TokenResponse>>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    });
+    return res.data;
+  },
+
+  getMe: async (): Promise<UserResponse> => {
+    const res = await request<DataEnvelope<UserResponse>>('/auth/me');
+    return res.data;
+  },
+
   getLiveness: (): Promise<HealthStatus> => request<HealthStatus>('/health'),
   getReadiness: (): Promise<HealthStatus> => request<HealthStatus>('/health/ready'),
 
@@ -201,6 +224,8 @@ export const apiService = {
   },
 
   getExportUrl: (martPath: string, limit: number = 5000): string => {
-    return `${API_BASE_URL}/analytics/export?mart_path=${encodeURIComponent(martPath)}&limit=${limit}`;
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('dineiq_token') : null;
+    const tokenParam = token ? `&token=${encodeURIComponent(token)}` : '';
+    return `${API_BASE_URL}/analytics/export?mart_path=${encodeURIComponent(martPath)}&limit=${limit}${tokenParam}`;
   },
 };

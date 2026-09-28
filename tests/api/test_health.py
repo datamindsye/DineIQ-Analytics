@@ -30,9 +30,9 @@ def test_health_readiness_endpoint(client: TestClient):
     assert "database" in data
 
 
-def test_analytics_status_endpoint(client: TestClient):
-    """Verify analytics status endpoint returns envelope structure."""
-    response = client.get("/api/v1/analytics/status")
+def test_analytics_status_endpoint(client: TestClient, admin_headers: dict[str, str]):
+    """Verify analytics status endpoint returns envelope structure for authenticated user."""
+    response = client.get("/api/v1/analytics/status", headers=admin_headers)
     assert response.status_code == 200
     data = response.json()
     assert "data" in data

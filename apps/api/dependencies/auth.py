@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
@@ -21,11 +21,8 @@ oauth2_scheme = OAuth2PasswordBearer(
 )
 
 
-def get_current_user(
-    token: Annotated[str | None, Depends(oauth2_scheme)],
-    db: Annotated[Session, Depends(get_db)],
-) -> User:
-    """Validate Bearer token and retrieve the corresponding active user."""
+def get_user_from_token(token: str | None, db: Session) -> User:
+    """Validate token and retrieve the corresponding active user."""
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -68,6 +65,35 @@ def get_current_user(
             detail="User account is deactivated",
         )
 
+    return user
+
+
+def get_current_user(
+    token: Annotated[str | None, Depends(oauth2_scheme)],
+    db: Annotated[Session, Depends(get_db)],
+) -> User:
+    """Validate Bearer token and retrieve the corresponding active user."""
+    return get_user_from_token(token, db)
+
+
+def get_export_user(
+    token_header: Annotated[str | None, Depends(oauth2_scheme)],
+    db: Annotated[Session, Depends(get_db)],
+    token_query: str | None = Query(None, alias="token"),
+) -> User:
+    """Validate token from Bearer header or ?token= query parameter and enforce export permissions."""
+    raw_token = token_header or token_query
+    user = get_user_from_token(raw_token, db)
+    if user.is_superuser:
+        return user
+
+    user_role_names = {role.name for role in user.roles}
+    allowed_roles = {"Admin", "StoreManager", "DataScientist"}
+    if not user_role_names.intersection(allowed_roles):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Access forbidden: required role in {sorted(list(allowed_roles))}",
+        )
     return user
 
 

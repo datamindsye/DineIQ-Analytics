@@ -7,7 +7,6 @@ export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [options, setOptions] = useState<GlobalFilterOptions>(defaultOptions);
-  const [currentRole, setCurrentRole] = useState<'Admin' | 'StoreManager' | 'DataScientist'>('Admin');
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const loadFilters = React.useCallback(() => {
@@ -49,8 +48,6 @@ export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         selectedCategory,
         setSelectedCategory,
         options,
-        currentRole,
-        setCurrentRole,
         isLoading,
         refreshFilters: handleRefresh,
       }}

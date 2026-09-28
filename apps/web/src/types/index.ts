@@ -109,6 +109,9 @@ export interface CustomerData {
   monetary_value: number;
   recency_days: number;
   rfm_segment: 'Champions' | 'Loyal' | 'At Risk' | 'Lost';
+  cluster_id?: number | null;
+  segment_label?: string | null;
+  ml_segment_label?: string | null;
   churn_probability?: number | null;
 }
 
@@ -116,6 +119,9 @@ export interface CustomerSummaryResponse {
   customers: CustomerData[];
   total_count: number;
   segment_distribution: Record<string, number>;
+  ml_segment_distribution?: Record<string, number>;
+  spark_selected_algorithm?: string;
+  python_selected_algorithm?: string;
 }
 
 export interface SalesOperationsResponse {
@@ -142,6 +148,22 @@ export interface DemandPricingResponse {
     predicted_quantity: number;
     absolute_error: number;
   }[];
+  spark_demand_forecast_curve?: {
+    week_start_date: string;
+    split: string;
+    actual_quantity: number;
+    predicted_quantity: number;
+    absolute_error: number;
+  }[];
+  python_demand_forecast_curve?: {
+    week_start_date: string;
+    split: string;
+    actual_quantity: number;
+    predicted_quantity: number;
+    absolute_error: number;
+  }[];
+  spark_selected_algorithm?: string;
+  python_selected_algorithm?: string;
   pricing_items: {
     source_menu_item_id: string;
     item_name: string;
@@ -166,6 +188,22 @@ export interface WastageInventoryResponse {
     sold_quantity: number;
   }[];
   weekly_trend: { calendar_year: number; calendar_week: number; waste_cost: number; waste_quantity: number }[];
+  ml_risk_summary?: {
+    total_evaluated: number;
+    predicted_high_risk_count: number;
+    avg_risk_probability: number;
+    high_risk_rate_pct: number;
+    spark_selected_algorithm: string;
+    python_selected_algorithm: string;
+  };
+  ml_predicted_risks?: {
+    menu_item_id: string;
+    item_name: string;
+    risk_probability: number;
+    predicted_label: number;
+    predicted_risk_status: string;
+    high_risk_alerts_count: number;
+  }[];
 }
 
 export interface PromotionsBasketResponse {
@@ -222,6 +260,8 @@ export interface ComparisonArenaResponse {
       agreement_pct: number;
       total_records_compared: number;
       spark_wins: boolean;
+      spark_selected_algorithm?: string;
+      python_selected_algorithm?: string;
       metrics_comparison: {
         spark: { rmse: number; mae: number };
         python: { rmse: number; mae: number };
@@ -231,6 +271,8 @@ export interface ComparisonArenaResponse {
       agreement_pct: number;
       total_records_compared: number;
       spark_wins: boolean;
+      spark_selected_algorithm?: string;
+      python_selected_algorithm?: string;
       metrics_comparison: {
         spark: { accuracy: number };
         python: { accuracy: number };
@@ -240,6 +282,8 @@ export interface ComparisonArenaResponse {
       agreement_pct: number;
       total_records_compared: number;
       spark_wins: boolean;
+      spark_selected_algorithm?: string;
+      python_selected_algorithm?: string;
       metrics_comparison: {
         spark: { accuracy: number };
         python: { accuracy: number };
@@ -249,6 +293,8 @@ export interface ComparisonArenaResponse {
       agreement_pct: number;
       total_customers_compared: number;
       spark_wins: boolean | null;
+      spark_selected_algorithm?: string;
+      python_selected_algorithm?: string;
       segment_agreement_breakdown: { segment_label: string; python_segment_label: string; count: number }[];
     };
   };
@@ -303,3 +349,40 @@ export interface WhatIfResponse {
   };
   disclaimer: string;
 }
+
+export interface PermissionResponse {
+  id: number;
+  name: string;
+  description?: string | null;
+}
+
+export interface RoleResponse {
+  id: number;
+  name: string;
+  description?: string | null;
+  permissions: PermissionResponse[];
+}
+
+export interface UserResponse {
+  id: number;
+  username: string;
+  email: string;
+  full_name?: string | null;
+  is_active: boolean;
+  is_superuser: boolean;
+  roles: RoleResponse[];
+  created_at: string;
+}
+
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  user: UserResponse;
+}
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+

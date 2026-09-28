@@ -41,6 +41,45 @@ def _sanitize_val(val: Any) -> Any:
     return str(val)
 
 
+def _get_champion_algorithm(task: str, pipeline: str) -> str:
+    """Retrieve the selected champion algorithm dynamically from Phase 6B metadata."""
+    base_dir = get_marts_directory()
+    meta_path = base_dir.parent / "artifacts" / f"{pipeline}_{task}_metadata.json"
+    if meta_path.exists():
+        try:
+            with open(meta_path, encoding="utf-8") as f:
+                data = json.load(f)
+                algo = data.get("selected_algorithm") or data.get("algorithm")
+                if algo:
+                    return str(algo)
+        except Exception as e:
+            logger.warning("Error reading %s: %s", meta_path, e)
+
+    summary_path = base_dir / "comparison" / "comparison_overall_summary.json"
+    if summary_path.exists():
+        try:
+            with open(summary_path, encoding="utf-8") as f:
+                summary = json.load(f)
+                task_summary = summary.get(task, {})
+                algo_key = f"{pipeline}_selected_algorithm"
+                if algo_key in task_summary:
+                    return str(task_summary[algo_key])
+        except Exception as e:
+            logger.warning("Error reading summary %s: %s", summary_path, e)
+
+    default_map = {
+        ("demand_forecast", "spark"): "GBTRegressor",
+        ("demand_forecast", "python"): "GradientBoostingRegressor",
+        ("wastage_risk", "spark"): "LogisticRegression",
+        ("wastage_risk", "python"): "GradientBoostingClassifier",
+        ("churn_risk", "spark"): "LogisticRegression",
+        ("churn_risk", "python"): "RandomForestClassifier",
+        ("customer_segmentation", "spark"): "BisectingKMeans",
+        ("customer_segmentation", "python"): "KMeans",
+    }
+    return default_map.get((task, pipeline), "Unknown")
+
+
 def get_global_filter_options() -> dict[str, Any]:
     """Retrieve distinct locations, categories, and channels from materialized marts."""
     base_dir = get_marts_directory()
@@ -267,18 +306,38 @@ def get_customer_intelligence_summary(
     limit: int = 50,
     offset: int = 0,
 ) -> dict[str, Any]:
-    """Query customer RFM mart and churn risk predictions."""
+    """Query customer RFM mart, churn risk predictions, and unsupervised ML customer segmentation."""
     base_dir = get_marts_directory()
     rfm_path = base_dir / "spark" / "mart_customer_rfm.parquet"
     churn_path = base_dir / "spark" / "ml_churn_risk.parquet"
+    ml_seg_path = base_dir / "spark" / "ml_customer_segmentation.parquet"
 
     if not rfm_path.exists():
-        return {"customers": [], "total_count": 0, "segment_distribution": {}}
+        return {
+            "customers": [],
+            "total_count": 0,
+            "segment_distribution": {},
+            "ml_segment_distribution": {},
+            "spark_selected_algorithm": "BisectingKMeans",
+            "python_selected_algorithm": "KMeans",
+        }
 
-    table = pq.read_table(rfm_path)
+    rfm_cols = [
+        "source_customer_id",
+        "customer_name",
+        "loyalty_tier",
+        "preferred_channel",
+        "home_city",
+        "frequency",
+        "monetary_value",
+        "recency_days",
+        "rfm_segment",
+    ]
+    filters = [("rfm_segment", "==", segment)] if (segment and not search) else None
+    table = pq.read_table(rfm_path, columns=rfm_cols, filters=filters)
     df = table.to_pandas()
 
-    if segment:
+    if segment and search:
         df = df[df["rfm_segment"] == segment]
     if search:
         s = search.lower()
@@ -290,21 +349,59 @@ def get_customer_intelligence_summary(
     total_count = len(df)
     segment_dist = df["rfm_segment"].value_counts().to_dict()
 
-    # Join churn probabilities if available
+    sliced = df.iloc[offset : offset + limit]
+    target_cids = set(sliced["source_customer_id"].dropna())
+
     churn_map = {}
-    if churn_path.exists():
+    if churn_path.exists() and target_cids:
         try:
-            churn_table = pq.read_table(churn_path, columns=["customer_id", "churn_probability"])
+            churn_table = pq.read_table(
+                churn_path,
+                columns=["customer_id", "churn_probability"],
+                filters=[("customer_id", "in", target_cids)],
+            )
             c_dict = churn_table.to_pydict()
             for cid, cp in zip(c_dict["customer_id"], c_dict["churn_probability"], strict=False):
                 churn_map[cid] = float(cp) if cp is not None else None
         except Exception as e:
             logger.warning("Failed loading churn predictions: %s", e)
 
-    sliced = df.iloc[offset : offset + limit]
+    ml_seg_map = {}
+    ml_segment_dist = {}
+    if ml_seg_path.exists():
+        try:
+            # Fast vectorized distribution calculation across segment_label
+            seg_dist_table = pq.read_table(ml_seg_path, columns=["segment_label"])
+            for row in seg_dist_table["segment_label"].value_counts().to_pylist():
+                v = row["values"]
+                if v is not None:
+                    ml_segment_dist[str(v)] = int(row["counts"])
+
+            # Selective prediction retrieval for targeted page of customers
+            if target_cids:
+                ml_seg_table = pq.read_table(
+                    ml_seg_path,
+                    columns=["customer_id", "cluster_id", "segment_label"],
+                    filters=[("customer_id", "in", target_cids)],
+                )
+                s_dict = ml_seg_table.to_pydict()
+                for cid, cl_id, s_lbl in zip(
+                    s_dict["customer_id"],
+                    s_dict["cluster_id"],
+                    s_dict["segment_label"],
+                    strict=False,
+                ):
+                    ml_seg_map[cid] = {
+                        "cluster_id": int(cl_id) if cl_id is not None else None,
+                        "segment_label": str(s_lbl) if s_lbl is not None else None,
+                    }
+        except Exception as e:
+            logger.warning("Failed loading ML customer segmentation: %s", e)
+
     customers = []
     for _, row in sliced.iterrows():
         cid = row["source_customer_id"]
+        ml_info = ml_seg_map.get(cid, {})
         customers.append(
             {
                 "customer_id": cid,
@@ -316,6 +413,9 @@ def get_customer_intelligence_summary(
                 "monetary_value": _sanitize_val(row["monetary_value"]),
                 "recency_days": int(row["recency_days"]),
                 "rfm_segment": row["rfm_segment"],
+                "cluster_id": ml_info.get("cluster_id"),
+                "segment_label": ml_info.get("segment_label"),
+                "ml_segment_label": ml_info.get("segment_label"),
                 "churn_probability": churn_map.get(cid),
             }
         )
@@ -324,6 +424,9 @@ def get_customer_intelligence_summary(
         "customers": customers,
         "total_count": total_count,
         "segment_distribution": segment_dist,
+        "ml_segment_distribution": ml_segment_dist,
+        "spark_selected_algorithm": _get_champion_algorithm("customer_segmentation", "spark"),
+        "python_selected_algorithm": _get_champion_algorithm("customer_segmentation", "python"),
     }
 
 
@@ -394,10 +497,10 @@ def get_demand_and_pricing_summary(
     menu_item_id: str | None = None,
     restaurant_id: str | None = None,
 ) -> dict[str, Any]:
-    """Query demand forecast vs actuals and price elasticity analysis."""
+    """Query demand forecast vs actuals for both Spark and Python pipelines and price elasticity analysis."""
     base_dir = get_marts_directory()
 
-    # Demand forecast (Spark ML)
+    # 1. Spark MLlib Demand forecast
     demand_path = base_dir / "spark" / "ml_demand_forecast.parquet"
     demand_curve = []
     if demand_path.exists():
@@ -421,7 +524,43 @@ def get_demand_and_pricing_summary(
             .sort_values(by="week_start_date")
         )
 
-        demand_curve = [_sanitize_val(r) for r in grouped.to_dict(orient="records")]
+        for r in grouped.to_dict(orient="records"):
+            entry = _sanitize_val(r)
+            if "week_start_date" in entry:
+                entry["week_start_date"] = str(entry["week_start_date"])[:10]
+            demand_curve.append(entry)
+
+    # 2. Python Scikit-Learn Demand forecast
+    python_demand_path = base_dir / "python" / "ml_demand_forecast.parquet"
+    python_demand_curve = []
+    if python_demand_path.exists():
+        t_py = pq.read_table(python_demand_path)
+        df_py = t_py.to_pandas()
+        if menu_item_id:
+            df_py = df_py[df_py["menu_item_id"] == menu_item_id]
+        if restaurant_id:
+            df_py = df_py[df_py["restaurant_id"] == restaurant_id]
+
+        grouped_py = (
+            df_py.groupby(["week_start_date", "split"], as_index=False)
+            .agg(
+                {
+                    "actual_quantity": "sum",
+                    "predicted_quantity": "sum",
+                    "absolute_error": "mean",
+                }
+            )
+            .sort_values(by="week_start_date")
+        )
+
+        for r in grouped_py.to_dict(orient="records"):
+            entry = _sanitize_val(r)
+            if "week_start_date" in entry:
+                entry["week_start_date"] = str(entry["week_start_date"])[:10]
+            python_demand_curve.append(entry)
+
+    spark_selected_algorithm = _get_champion_algorithm("demand_forecast", "spark")
+    python_selected_algorithm = _get_champion_algorithm("demand_forecast", "python")
 
     # Pricing & elasticity
     pricing_path = base_dir / "spark" / "mart_pricing.parquet"
@@ -441,22 +580,46 @@ def get_demand_and_pricing_summary(
 
     return {
         "demand_forecast_curve": demand_curve,
+        "spark_demand_forecast_curve": demand_curve,
+        "python_demand_forecast_curve": python_demand_curve,
+        "spark_selected_algorithm": spark_selected_algorithm,
+        "python_selected_algorithm": python_selected_algorithm,
         "pricing_items": pricing_items,
         "elasticity_distribution": elasticity_classes,
     }
 
 
 def get_wastage_and_inventory_summary(restaurant_id: str | None = None) -> dict[str, Any]:
-    """Retrieve wastage cost breakdown, high-risk items, and reasons."""
+    """Retrieve wastage cost breakdown, high-risk items, weekly trends, and ML forward-looking wastage risk."""
     base_dir = get_marts_directory()
     waste_path = base_dir / "spark" / "mart_wastage.parquet"
+    ml_waste_path = base_dir / "spark" / "ml_wastage_risk.parquet"
 
     if not waste_path.exists():
-        return {"reasons": [], "high_risk_items": [], "weekly_trend": []}
+        return {
+            "reasons": [],
+            "high_risk_items": [],
+            "weekly_trend": [],
+            "ml_risk_summary": {},
+            "ml_predicted_risks": [],
+        }
 
-    t = pq.read_table(waste_path)
+    waste_cols = [
+        "source_restaurant_id",
+        "primary_reason",
+        "waste_cost",
+        "waste_quantity",
+        "current_week_wastage_risk",
+        "source_menu_item_id",
+        "item_name",
+        "sold_quantity",
+        "calendar_year",
+        "calendar_week",
+    ]
+    waste_filters = [("source_restaurant_id", "==", restaurant_id)] if restaurant_id else None
+    t = pq.read_table(waste_path, columns=waste_cols, filters=waste_filters)
     df = t.to_pandas()
-    if restaurant_id:
+    if restaurant_id and "source_restaurant_id" in df.columns:
         df = df[df["source_restaurant_id"] == restaurant_id]
 
     reasons = (
@@ -497,10 +660,81 @@ def get_wastage_and_inventory_summary(restaurant_id: str | None = None) -> dict[
         .to_dict(orient="records")
     )
 
+    # ML Forward-looking wastage risk integration
+    ml_risk_summary: dict[str, Any] = {}
+    ml_predicted_items: list[dict[str, Any]] = []
+    if ml_waste_path.exists():
+        try:
+            ml_cols = ["restaurant_id", "menu_item_id", "predicted_label", "risk_probability"]
+            ml_filters = [("restaurant_id", "==", restaurant_id)] if restaurant_id else None
+            t_ml = pq.read_table(ml_waste_path, columns=ml_cols, filters=ml_filters)
+            df_ml = t_ml.to_pandas()
+            if restaurant_id and "restaurant_id" in df_ml.columns:
+                df_ml = df_ml[df_ml["restaurant_id"] == restaurant_id]
+
+            total_evaluated = len(df_ml)
+            high_risk_count = int(df_ml["predicted_label"].sum()) if total_evaluated > 0 else 0
+            avg_prob = float(df_ml["risk_probability"].mean()) if total_evaluated > 0 else 0.0
+            high_risk_rate = (
+                (high_risk_count / total_evaluated * 100.0) if total_evaluated > 0 else 0.0
+            )
+
+            # Fast distinct mapping of menu item ID to item name from historical mart
+            dedup = df[["source_menu_item_id", "item_name"]].drop_duplicates("source_menu_item_id")
+            item_name_map = dict(
+                zip(dedup["source_menu_item_id"], dedup["item_name"], strict=False)
+            )
+
+            spark_algo = _get_champion_algorithm("wastage_risk", "spark")
+            python_algo = _get_champion_algorithm("wastage_risk", "python")
+
+            ml_risk_summary = {
+                "total_evaluated": total_evaluated,
+                "predicted_high_risk_count": high_risk_count,
+                "avg_risk_probability": round(avg_prob, 4),
+                "high_risk_rate_pct": round(high_risk_rate, 2),
+                "spark_selected_algorithm": spark_algo,
+                "python_selected_algorithm": python_algo,
+            }
+
+            # Top forward-looking high-risk menu items (vectorized sum for binary risk count)
+            grouped_ml = (
+                df_ml.groupby("menu_item_id", as_index=False)
+                .agg(
+                    {
+                        "risk_probability": "mean",
+                        "predicted_label": "sum",
+                    }
+                )
+                .rename(columns={"predicted_label": "high_risk_alerts_count"})
+                .sort_values(by="risk_probability", ascending=False)
+                .head(25)
+            )
+
+            for _, r_ml in grouped_ml.iterrows():
+                mid = r_ml["menu_item_id"]
+                prob = float(r_ml["risk_probability"])
+                alerts = int(r_ml["high_risk_alerts_count"])
+                is_high = 1 if (prob >= 0.5 or alerts > 0) else 0
+                ml_predicted_items.append(
+                    {
+                        "menu_item_id": mid,
+                        "item_name": item_name_map.get(mid, mid),
+                        "risk_probability": round(prob, 4),
+                        "predicted_label": is_high,
+                        "predicted_risk_status": "HIGH RISK" if is_high == 1 else "ELEVATED",
+                        "high_risk_alerts_count": alerts,
+                    }
+                )
+        except Exception as e:
+            logger.warning("Failed loading ML wastage risk mart: %s", e)
+
     return {
         "reasons": [_sanitize_val(r) for r in reasons],
         "high_risk_items": [_sanitize_val(r) for r in high_risk],
         "weekly_trend": [_sanitize_val(r) for r in weekly],
+        "ml_risk_summary": _sanitize_val(ml_risk_summary),
+        "ml_predicted_risks": [_sanitize_val(r) for r in ml_predicted_items],
     }
 
 
@@ -578,6 +812,18 @@ def get_data_science_arena_summary(task: str | None = None, limit: int = 100) ->
         with open(summary_path, encoding="utf-8") as f:
             summary_data = json.load(f)
 
+    # Ensure spark_selected_algorithm and python_selected_algorithm are dynamically guaranteed
+    for task_name in ["demand_forecast", "wastage_risk", "churn_risk", "customer_segmentation"]:
+        if task_name in summary_data and isinstance(summary_data[task_name], dict):
+            if "spark_selected_algorithm" not in summary_data[task_name]:
+                summary_data[task_name]["spark_selected_algorithm"] = _get_champion_algorithm(
+                    task_name, "spark"
+                )
+            if "python_selected_algorithm" not in summary_data[task_name]:
+                summary_data[task_name]["python_selected_algorithm"] = _get_champion_algorithm(
+                    task_name, "python"
+                )
+
     # Detailed record comparison
     comparison_table = []
     target_task = task or "demand_forecast"
@@ -611,6 +857,7 @@ def get_actionable_recommendations() -> list[dict[str, Any]]:
         # High selling loss making items
         loss_makers = df[df["flag_high_selling_loss_making"].astype(bool)].head(5)
         for _, r in loss_makers.iterrows():
+            cm_loss = abs(float(r["contribution_margin"]))
             recs.append(
                 {
                     "id": f"REC-MENU-{r['source_menu_item_id']}",
@@ -621,7 +868,7 @@ def get_actionable_recommendations() -> list[dict[str, Any]]:
                     "interpretation": "Strong customer demand is actively eroding restaurant profitability with every transaction.",
                     "recommendation": "Increase base price by 10-15% or renegotiate supplier food cost to restore margin positive status.",
                     "priority": "Critical",
-                    "expected_impact": "+$1,200 monthly margin recovery",
+                    "expected_impact": f"+${cm_loss:.2f} monthly margin recovery via pricing adjustment",
                 }
             )
 
@@ -638,6 +885,7 @@ def get_actionable_recommendations() -> list[dict[str, Any]]:
             .head(5)
         )
         for _, r in high_waste.iterrows():
+            waste_val = float(r["waste_cost"])
             recs.append(
                 {
                     "id": f"REC-WASTE-{r['source_menu_item_id']}",
@@ -648,7 +896,7 @@ def get_actionable_recommendations() -> list[dict[str, Any]]:
                     "interpretation": "Over-preparation during slow shifts leads to rapid inventory spoilage.",
                     "recommendation": "Adjust daily prep batches to match dynamic ML demand forecast horizons.",
                     "priority": "High",
-                    "expected_impact": "-30% reduction in food spoilage losses",
+                    "expected_impact": f"-30% reduction in food spoilage losses (${waste_val * 0.30:.2f} estimated savings)",
                 }
             )
 
@@ -663,6 +911,7 @@ def get_actionable_recommendations() -> list[dict[str, Any]]:
             .head(5)
         )
         for _, r in at_risk.iterrows():
+            spend_val = float(r["monetary_value"])
             recs.append(
                 {
                     "id": f"REC-CHURN-{r['source_customer_id']}",
@@ -673,7 +922,7 @@ def get_actionable_recommendations() -> list[dict[str, Any]]:
                     "interpretation": "Customer has high churn risk despite proven loyalty and willingness to spend.",
                     "recommendation": "Trigger personalized win-back offer on their preferred channel with a tailored incentive.",
                     "priority": "Medium",
-                    "expected_impact": "High probability reactivation of tier customer",
+                    "expected_impact": f"Reactivation of high-tier customer (${spend_val:.2f} historical spend at risk)",
                 }
             )
 

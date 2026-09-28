@@ -73,6 +73,32 @@ export const WastageInventoryPage: React.FC = () => {
 
       {error && <div className="alert-box error">{error}</div>}
 
+      {/* ML Wastage Risk KPI Overview */}
+      {data?.ml_risk_summary && (
+        <div className="metrics-grid" style={{ marginBottom: '24px' }}>
+          <div className="metric-card" style={{ borderLeft: '4px solid #38bdf8' }}>
+            <div className="metric-label">Evaluated ML Records</div>
+            <div className="metric-value">{data.ml_risk_summary.total_evaluated?.toLocaleString() || 0}</div>
+            <div className="metric-sub">Temporal split observations</div>
+          </div>
+          <div className="metric-card" style={{ borderLeft: '4px solid #ef4444' }}>
+            <div className="metric-label">ML High-Risk Alerts</div>
+            <div className="metric-value">{data.ml_risk_summary.predicted_high_risk_count?.toLocaleString() || 0}</div>
+            <div className="metric-sub">Forward-looking alert instances</div>
+          </div>
+          <div className="metric-card" style={{ borderLeft: '4px solid #f59e0b' }}>
+            <div className="metric-label">High-Risk Rate</div>
+            <div className="metric-value">{data.ml_risk_summary.high_risk_rate_pct?.toFixed(2) || 0}%</div>
+            <div className="metric-sub">Avg Risk Prob: {((data.ml_risk_summary.avg_risk_probability || 0) * 100).toFixed(1)}%</div>
+          </div>
+          <div className="metric-card" style={{ borderLeft: '4px solid #10b981' }}>
+            <div className="metric-label">ML Champion Model</div>
+            <div className="metric-value" style={{ fontSize: '1.25rem' }}>{data.ml_risk_summary.spark_selected_algorithm || 'LogisticRegression'}</div>
+            <div className="metric-sub">Spark MLlib Validation-Selected</div>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '20px', marginBottom: '24px' }}>
         <div className="card chart-card">
           <PlotlyChart data={reasonData} layout={reasonLayout} />
@@ -82,12 +108,13 @@ export const WastageInventoryPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+      {/* Historical Wastage Section */}
+      <div className="card" style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
           <div>
-            <h2 className="card-title" style={{ margin: 0 }}>High Wastage Risk Menu Items</h2>
+            <h2 className="card-title" style={{ margin: 0 }}>Historical High-Wastage Menu Items (Accounting Evidence)</h2>
             <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
-              Identified by the approved forensic rule: Waste Cost Ratio &gt; 5% OR Waste Quantity Ratio &gt; 10%.
+              Identified by empirical accounting rule: Waste Cost Ratio &gt; 5% OR Waste Quantity Ratio &gt; 10%.
             </p>
           </div>
           <a
@@ -95,7 +122,7 @@ export const WastageInventoryPage: React.FC = () => {
             className="btn btn-secondary"
             download
           >
-            Export Wastage CSV
+            Export Historical Wastage CSV
           </a>
         </div>
 
@@ -108,7 +135,7 @@ export const WastageInventoryPage: React.FC = () => {
                 <th>Units Sold</th>
                 <th>Units Wasted</th>
                 <th>Wastage Cost Loss</th>
-                <th>Risk Status</th>
+                <th>Historical Risk Status</th>
               </tr>
             </thead>
             <tbody>
@@ -116,22 +143,111 @@ export const WastageInventoryPage: React.FC = () => {
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', padding: '30px' }}>Loading wastage risks...</td>
                 </tr>
-              ) : data?.high_risk_items.map((item) => (
-                <tr key={item.source_menu_item_id}>
-                  <td><code>{item.source_menu_item_id}</code></td>
-                  <td><strong>{item.item_name}</strong></td>
-                  <td>{Number(item.sold_quantity).toLocaleString()}</td>
-                  <td>{Number(item.waste_quantity).toLocaleString()}</td>
-                  <td>
-                    <strong style={{ color: '#ef4444' }}>
-                      ${Number(item.waste_cost).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    </strong>
-                  </td>
-                  <td>
-                    <span className="badge-tag badge-risk-high">HIGH RISK</span>
+              ) : data?.high_risk_items && data.high_risk_items.length > 0 ? (
+                data.high_risk_items.map((item) => (
+                  <tr key={item.source_menu_item_id}>
+                    <td><code>{item.source_menu_item_id}</code></td>
+                    <td><strong>{item.item_name}</strong></td>
+                    <td>{Number(item.sold_quantity).toLocaleString()}</td>
+                    <td>{Number(item.waste_quantity).toLocaleString()}</td>
+                    <td>
+                      <strong style={{ color: '#ef4444' }}>
+                        ${Number(item.waste_cost).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </strong>
+                    </td>
+                    <td>
+                      <span className="badge-tag badge-risk-high">HIGH RISK</span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
+                    No items currently exceeding historical forensic accounting thresholds.
                   </td>
                 </tr>
-              ))}
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ML Forward-Looking Predictive Wastage Risk Section */}
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+          <div>
+            <h2 className="card-title" style={{ margin: 0 }}>
+              Machine Learning Forward-Looking Wastage Risk (Spark MLlib {data?.ml_risk_summary?.spark_selected_algorithm || 'LogisticRegression'})
+            </h2>
+            <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+              Supervised classification prediction models estimating forward-looking risk probabilities, independent of past realization.
+            </p>
+          </div>
+          <a
+            href={apiService.getExportUrl('spark/ml_wastage_risk.parquet')}
+            className="btn btn-secondary"
+            download
+          >
+            Export ML Wastage Risk CSV
+          </a>
+        </div>
+
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Menu Item ID</th>
+                <th>Item Name</th>
+                <th>Risk Probability</th>
+                <th>High Risk Alert Occurrences</th>
+                <th>ML Predicted Status</th>
+                <th>Model Pipeline</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '30px' }}>Loading ML predictions...</td>
+                </tr>
+              ) : data?.ml_predicted_risks && data.ml_predicted_risks.length > 0 ? (
+                data.ml_predicted_risks.map((pred) => (
+                  <tr key={pred.menu_item_id}>
+                    <td><code>{pred.menu_item_id}</code></td>
+                    <td><strong>{pred.item_name}</strong></td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: '80px', height: '8px', background: '#334155', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div
+                            style={{
+                              width: `${Math.min(100, Math.max(0, pred.risk_probability * 100))}%`,
+                              height: '100%',
+                              background: pred.risk_probability > 0.5 ? '#ef4444' : pred.risk_probability > 0.2 ? '#f59e0b' : '#10b981',
+                            }}
+                          />
+                        </div>
+                        <span>{(pred.risk_probability * 100).toFixed(1)}%</span>
+                      </div>
+                    </td>
+                    <td>{pred.high_risk_alerts_count} alert periods</td>
+                    <td>
+                      <span className={`badge-tag ${pred.predicted_label === 1 ? 'badge-risk-high' : 'badge-volume'}`}>
+                        {pred.predicted_risk_status}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                        Spark MLlib ({data?.ml_risk_summary?.spark_selected_algorithm || 'LogisticRegression'})
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
+                    No forward-looking ML risk predictions found.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

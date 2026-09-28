@@ -77,11 +77,13 @@ export const DataScienceArenaPage: React.FC = () => {
                 : '—'}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
-              Spark RMSE: {overview?.demand_forecast?.metrics_comparison?.spark?.rmse?.toFixed(2) || '—'} vs Python RMSE: {overview?.demand_forecast?.metrics_comparison?.python?.rmse?.toFixed(2) || '—'}
+              Spark ({overview?.demand_forecast?.spark_selected_algorithm || 'MLlib'}) RMSE: {overview?.demand_forecast?.metrics_comparison?.spark?.rmse?.toFixed(2) || '—'} vs Python ({overview?.demand_forecast?.python_selected_algorithm || 'Sklearn'}) RMSE: {overview?.demand_forecast?.metrics_comparison?.python?.rmse?.toFixed(2) || '—'}
             </div>
             <div style={{ marginTop: '8px' }}>
               <span className="badge-tag badge-profit">
-                Winner: {overview?.demand_forecast?.spark_wins ? 'Spark MLlib' : 'Python Sklearn'}
+                Winner: {overview?.demand_forecast?.spark_wins
+                  ? (overview?.demand_forecast?.spark_selected_algorithm ? `Spark (${overview.demand_forecast.spark_selected_algorithm})` : 'Spark MLlib')
+                  : (overview?.demand_forecast?.python_selected_algorithm ? `Python (${overview.demand_forecast.python_selected_algorithm})` : 'Python Sklearn')}
               </span>
             </div>
           </div>
@@ -95,11 +97,13 @@ export const DataScienceArenaPage: React.FC = () => {
                 : '—'}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
-              Spark Acc: {overview?.wastage_risk?.metrics_comparison?.spark?.accuracy ? `${(overview.wastage_risk.metrics_comparison.spark.accuracy * 100).toFixed(1)}%` : '—'} vs Python: {overview?.wastage_risk?.metrics_comparison?.python?.accuracy ? `${(overview.wastage_risk.metrics_comparison.python.accuracy * 100).toFixed(1)}%` : '—'}
+              Spark ({overview?.wastage_risk?.spark_selected_algorithm || 'MLlib'}): {overview?.wastage_risk?.metrics_comparison?.spark?.accuracy ? `${(overview.wastage_risk.metrics_comparison.spark.accuracy * 100).toFixed(1)}%` : '—'} vs Python ({overview?.wastage_risk?.python_selected_algorithm || 'Sklearn'}): {overview?.wastage_risk?.metrics_comparison?.python?.accuracy ? `${(overview.wastage_risk.metrics_comparison.python.accuracy * 100).toFixed(1)}%` : '—'}
             </div>
             <div style={{ marginTop: '8px' }}>
               <span className="badge-tag badge-profit">
-                Winner: {overview?.wastage_risk?.spark_wins ? 'Spark MLlib' : 'Python Sklearn'}
+                Winner: {overview?.wastage_risk?.spark_wins
+                  ? (overview?.wastage_risk?.spark_selected_algorithm ? `Spark (${overview.wastage_risk.spark_selected_algorithm})` : 'Spark MLlib')
+                  : (overview?.wastage_risk?.python_selected_algorithm ? `Python (${overview.wastage_risk.python_selected_algorithm})` : 'Python Sklearn')}
               </span>
             </div>
           </div>
@@ -113,11 +117,13 @@ export const DataScienceArenaPage: React.FC = () => {
                 : '—'}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
-              Spark Acc: {overview?.churn_risk?.metrics_comparison?.spark?.accuracy ? `${(overview.churn_risk.metrics_comparison.spark.accuracy * 100).toFixed(1)}%` : '—'} vs Python: {overview?.churn_risk?.metrics_comparison?.python?.accuracy ? `${(overview.churn_risk.metrics_comparison.python.accuracy * 100).toFixed(1)}%` : '—'}
+              Spark ({overview?.churn_risk?.spark_selected_algorithm || 'MLlib'}): {overview?.churn_risk?.metrics_comparison?.spark?.accuracy ? `${(overview.churn_risk.metrics_comparison.spark.accuracy * 100).toFixed(1)}%` : '—'} vs Python ({overview?.churn_risk?.python_selected_algorithm || 'Sklearn'}): {overview?.churn_risk?.metrics_comparison?.python?.accuracy ? `${(overview.churn_risk.metrics_comparison.python.accuracy * 100).toFixed(1)}%` : '—'}
             </div>
             <div style={{ marginTop: '8px' }}>
               <span className="badge-tag badge-profit">
-                Winner: {overview?.churn_risk?.spark_wins ? 'Spark MLlib' : 'Python Sklearn'}
+                Winner: {overview?.churn_risk?.spark_wins
+                  ? (overview?.churn_risk?.spark_selected_algorithm ? `Spark (${overview.churn_risk.spark_selected_algorithm})` : 'Spark MLlib')
+                  : (overview?.churn_risk?.python_selected_algorithm ? `Python (${overview.churn_risk.python_selected_algorithm})` : 'Python Sklearn')}
               </span>
             </div>
           </div>
@@ -131,10 +137,12 @@ export const DataScienceArenaPage: React.FC = () => {
                 : '—'}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
-              50,000 customers matched across RFM clusters
+              Spark: {overview?.customer_segmentation?.spark_selected_algorithm || 'BisectingKMeans'} vs Python: {overview?.customer_segmentation?.python_selected_algorithm || 'KMeans'}
             </div>
             <div style={{ marginTop: '8px' }}>
-              <span className="badge-tag badge-volume">Consensus: 76.4%</span>
+              <span className="badge-tag badge-volume">
+                Consensus: {overview?.customer_segmentation?.agreement_pct !== undefined ? `${overview.customer_segmentation.agreement_pct}%` : '—'}
+              </span>
             </div>
           </div>
         </div>
@@ -146,25 +154,25 @@ export const DataScienceArenaPage: React.FC = () => {
           className={`tab-btn ${selectedTask === 'demand_forecast' ? 'active' : ''}`}
           onClick={() => setSelectedTask('demand_forecast')}
         >
-          📈 Demand Forecast (142,817 Rows)
+          📈 Demand Forecast{overview?.demand_forecast?.total_records_compared ? ` (${overview.demand_forecast.total_records_compared.toLocaleString()} Rows)` : ''}
         </button>
         <button
           className={`tab-btn ${selectedTask === 'wastage_risk' ? 'active' : ''}`}
           onClick={() => setSelectedTask('wastage_risk')}
         >
-          🗑️ Wastage Risk (14,242 Rows)
+          🗑️ Wastage Risk{overview?.wastage_risk?.total_records_compared ? ` (${overview.wastage_risk.total_records_compared.toLocaleString()} Rows)` : ''}
         </button>
         <button
           className={`tab-btn ${selectedTask === 'churn_risk' ? 'active' : ''}`}
           onClick={() => setSelectedTask('churn_risk')}
         >
-          👥 Churn Risk (35,174 Rows)
+          👥 Churn Risk{overview?.churn_risk?.total_records_compared ? ` (${overview.churn_risk.total_records_compared.toLocaleString()} Rows)` : ''}
         </button>
         <button
           className={`tab-btn ${selectedTask === 'customer_segmentation' ? 'active' : ''}`}
           onClick={() => setSelectedTask('customer_segmentation')}
         >
-          🎯 RFM Segmentation (50,000 Rows)
+          🎯 RFM Segmentation{overview?.customer_segmentation?.total_customers_compared ? ` (${overview.customer_segmentation.total_customers_compared.toLocaleString()} Rows)` : ''}
         </button>
       </div>
 

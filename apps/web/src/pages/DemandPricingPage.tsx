@@ -33,29 +33,60 @@ export const DemandPricingPage: React.FC = () => {
     };
   }, [selectedLocation, selectedItem]);
 
-  // Forecast vs Actuals curve
-  const curve = data?.demand_forecast_curve || [];
-  const forecastData = [
+  const [pipelineView, setPipelineView] = useState<'both' | 'spark' | 'python'>('both');
+
+  // Forecast vs Actuals curve (Dual Pipeline)
+  const sparkCurve = data?.demand_forecast_curve || [];
+  const pythonCurve = data?.python_demand_forecast_curve || [];
+
+  const sparkAlgo = data?.spark_selected_algorithm || 'GBTRegressor';
+  const pythonAlgo = data?.python_selected_algorithm || 'GradientBoostingRegressor';
+
+  const forecastData: Array<{
+    x: string[];
+    y: number[];
+    type: 'scatter';
+    mode: 'lines+markers' | 'lines';
+    name: string;
+    line: { color: string; width: number; dash?: 'dash' | 'dot' };
+  }> = [
     {
-      x: curve.map((c) => c.week_start_date),
-      y: curve.map((c) => c.actual_quantity),
-      type: 'scatter' as const,
-      mode: 'lines+markers' as const,
+      x: sparkCurve.map((c) => c.week_start_date),
+      y: sparkCurve.map((c) => c.actual_quantity),
+      type: 'scatter',
+      mode: 'lines+markers',
       name: 'Actual Sold Quantity',
       line: { color: '#38bdf8', width: 2 },
     },
-    {
-      x: curve.map((c) => c.week_start_date),
-      y: curve.map((c) => c.predicted_quantity),
-      type: 'scatter' as const,
-      mode: 'lines' as const,
-      name: 'MLlib Forecast (Predicted)',
-      line: { color: '#10b981', dash: 'dash' as const, width: 2 },
-    },
   ];
 
+  if (pipelineView === 'both' || pipelineView === 'spark') {
+    forecastData.push({
+      x: sparkCurve.map((c) => c.week_start_date),
+      y: sparkCurve.map((c) => c.predicted_quantity),
+      type: 'scatter',
+      mode: 'lines',
+      name: `Spark MLlib (${sparkAlgo})`,
+      line: { color: '#10b981', dash: 'dash', width: 2 },
+    });
+  }
+
+  if (pipelineView === 'both' || pipelineView === 'python') {
+    forecastData.push({
+      x: pythonCurve.map((c) => c.week_start_date),
+      y: pythonCurve.map((c) => c.predicted_quantity),
+      type: 'scatter',
+      mode: 'lines',
+      name: `Python Sklearn (${pythonAlgo})`,
+      line: { color: '#f59e0b', dash: 'dot', width: 2 },
+    });
+  }
+
   const forecastLayout = {
-    title: { text: 'Demand Forecasting: Actual Sales vs Spark MLlib Predictions Across Splits', font: { size: 15, color: '#f8fafc' } },
+    title: {
+      text: 'Demand Forecasting: Actual Sales vs ML Champion Predictions Across Splits',
+      font: { size: 15, color: '#f8fafc' },
+    },
     xaxis: { title: { text: 'ISO Week Starting Date', font: { color: '#94a3b8' } }, gridcolor: '#334155' },
     yaxis: { title: { text: 'Units Demanded', font: { color: '#94a3b8' } }, gridcolor: '#334155' },
     legend: { font: { color: '#94a3b8' } },
@@ -90,7 +121,7 @@ export const DemandPricingPage: React.FC = () => {
       <div className="page-header">
         <h1 className="page-title">Demand Forecasting & Price Elasticity</h1>
         <p className="page-description">
-          Gradient boosted regression demand trajectories and empirical price elasticity estimates.
+          Dual-pipeline ML demand trajectories ({sparkAlgo} vs {pythonAlgo}) and empirical price elasticity estimates.
         </p>
       </div>
 
@@ -112,13 +143,44 @@ export const DemandPricingPage: React.FC = () => {
           )}
         </div>
 
+        {/* Dual-Pipeline View Selector */}
+        <div className="filter-group">
+          <div className="tab-group" style={{ margin: 0 }}>
+            <button
+              className={`tab-btn ${pipelineView === 'both' ? 'active' : ''}`}
+              onClick={() => setPipelineView('both')}
+            >
+              Dual-Pipeline (Both)
+            </button>
+            <button
+              className={`tab-btn ${pipelineView === 'spark' ? 'active' : ''}`}
+              onClick={() => setPipelineView('spark')}
+            >
+              Spark ({sparkAlgo})
+            </button>
+            <button
+              className={`tab-btn ${pipelineView === 'python' ? 'active' : ''}`}
+              onClick={() => setPipelineView('python')}
+            >
+              Python ({pythonAlgo})
+            </button>
+          </div>
+        </div>
+
         <div className="filter-group">
           <a
             href={apiService.getExportUrl('spark/ml_demand_forecast.parquet')}
             className="btn btn-secondary"
             download
           >
-            Export Forecast CSV
+            Export Spark CSV
+          </a>
+          <a
+            href={apiService.getExportUrl('python/ml_demand_forecast.parquet')}
+            className="btn btn-secondary"
+            download
+          >
+            Export Python CSV
           </a>
           <a
             href={apiService.getExportUrl('spark/mart_pricing.parquet')}

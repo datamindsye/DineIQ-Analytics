@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { useAuth } from '../../context/useAuth';
 import { useFilters } from '../../context/useFilters';
 import { apiService } from '../../services/api';
 import type { HealthStatus } from '../../types';
 
 export const Header: React.FC = () => {
   const [health, setHealth] = useState<HealthStatus | null>(null);
-  const { selectedLocation, setSelectedLocation, options, currentRole, setCurrentRole } = useFilters();
+  const { selectedLocation, setSelectedLocation, options } = useFilters();
+  const { user, role, logout } = useAuth();
 
   useEffect(() => {
     let isMounted = true;
@@ -58,22 +60,28 @@ export const Header: React.FC = () => {
       </div>
 
       <div className="header-meta">
-        <div className="role-control">
-          <span className="role-label">Role:</span>
-          <select
-            value={currentRole}
-            onChange={(e) => setCurrentRole(e.target.value as 'Admin' | 'StoreManager' | 'DataScientist')}
-            className="role-select"
-          >
-            <option value="Admin">Admin (Full Access)</option>
-            <option value="StoreManager">Store Manager</option>
-            <option value="DataScientist">Data Scientist</option>
-          </select>
-        </div>
-
         <span className={`status-badge ${health?.status === 'ok' ? 'ok' : 'warning'}`}>
           {health?.status === 'ok' ? '● Pipeline Online' : '○ Standby'}
         </span>
+
+        <div className="header-user-section">
+          <div className="user-profile-chip">
+            <span className="user-avatar">{user?.username?.[0]?.toUpperCase() || 'U'}</span>
+            <div className="user-details">
+              <span className="user-display-name">{user?.full_name || user?.username || 'Authenticated User'}</span>
+              <span className={`role-badge role-${role.toLowerCase()}`}>{role}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={logout}
+            className="btn-logout"
+            title="Sign out of DineIQ Analytics"
+          >
+            <span className="logout-icon">🚪</span>
+            <span className="logout-label">Sign Out</span>
+          </button>
+        </div>
       </div>
     </header>
   );

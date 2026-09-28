@@ -51,8 +51,10 @@ export const CustomerIntelligencePage: React.FC = () => {
     loadCustomerData();
   };
 
-  // Pie chart of RFM segments
-  const dist = data?.segment_distribution || {};
+  const [segmentView, setSegmentView] = useState<'rfm' | 'ml'>('rfm');
+
+  // Pie chart of segments (RFM vs ML Clustering)
+  const dist = (segmentView === 'rfm' ? data?.segment_distribution : data?.ml_segment_distribution) || {};
   const segmentChartData = [
     {
       values: Object.values(dist),
@@ -72,8 +74,12 @@ export const CustomerIntelligencePage: React.FC = () => {
     },
   ];
 
+  const chartTitle = segmentView === 'rfm'
+    ? 'Rule-Based RFM Segment Distribution'
+    : `ML Clustering Distribution (${data?.spark_selected_algorithm || 'BisectingKMeans'})`;
+
   const segmentChartLayout = {
-    title: { text: 'RFM Customer Segment Distribution', font: { size: 15, color: '#f8fafc' } },
+    title: { text: chartTitle, font: { size: 15, color: '#f8fafc' } },
     showlegend: true,
     legend: { font: { color: '#94a3b8' } },
     margin: { l: 20, r: 20, t: 40, b: 20 },
@@ -84,7 +90,7 @@ export const CustomerIntelligencePage: React.FC = () => {
       <div className="page-header">
         <h1 className="page-title">Customer Intelligence & Churn Risk</h1>
         <p className="page-description">
-          RFM lifecycle segmentation, retention analytics, and machine learning churn probabilities.
+          Dual-view segmentation (Rule-based RFM vs ML unsupervised clustering) and ML churn probabilities.
         </p>
       </div>
 
@@ -122,6 +128,13 @@ export const CustomerIntelligencePage: React.FC = () => {
           >
             Export RFM CSV
           </a>
+          <a
+            href={apiService.getExportUrl('spark/ml_customer_segmentation.parquet')}
+            className="btn btn-secondary"
+            download
+          >
+            Export ML Clusters CSV
+          </a>
         </div>
       </div>
 
@@ -150,7 +163,23 @@ export const CustomerIntelligencePage: React.FC = () => {
       </div>
 
       <div className="card chart-card">
-        <h2 className="card-title">Customer Portfolio Share</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+          <h2 className="card-title" style={{ margin: 0 }}>Customer Portfolio Share</h2>
+          <div className="tab-group" style={{ margin: 0 }}>
+            <button
+              className={`tab-btn ${segmentView === 'rfm' ? 'active' : ''}`}
+              onClick={() => setSegmentView('rfm')}
+            >
+              Rule-Based RFM
+            </button>
+            <button
+              className={`tab-btn ${segmentView === 'ml' ? 'active' : ''}`}
+              onClick={() => setSegmentView('ml')}
+            >
+              ML Clustering ({data?.spark_selected_algorithm || 'BisectingKMeans'})
+            </button>
+          </div>
+        </div>
         <PlotlyChart data={segmentChartData} layout={segmentChartLayout} />
       </div>
 
@@ -188,14 +217,15 @@ export const CustomerIntelligencePage: React.FC = () => {
                 <th>Orders</th>
                 <th>Total Spent</th>
                 <th>Recency</th>
-                <th>Segment</th>
+                <th>RFM Segment (Rule)</th>
+                <th>ML Cluster Segment</th>
                 <th>ML Churn Risk</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '30px' }}>Loading customers...</td>
+                  <td colSpan={10} style={{ textAlign: 'center', padding: '30px' }}>Loading customers...</td>
                 </tr>
               ) : data?.customers.map((c) => (
                 <tr key={c.customer_id}>
@@ -223,6 +253,18 @@ export const CustomerIntelligencePage: React.FC = () => {
                     >
                       {c.rfm_segment}
                     </span>
+                  </td>
+                  <td>
+                    {c.segment_label ? (
+                      <span
+                        className="badge-tag badge-volume"
+                        title={c.cluster_id !== undefined && c.cluster_id !== null ? `Cluster #${c.cluster_id}` : ''}
+                      >
+                        {c.segment_label} {c.cluster_id !== undefined && c.cluster_id !== null ? `(C${c.cluster_id})` : ''}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#64748b' }}>Unclustered</span>
+                    )}
                   </td>
                   <td>
                     {c.churn_probability !== undefined && c.churn_probability !== null ? (

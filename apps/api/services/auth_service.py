@@ -228,7 +228,7 @@ def register_user(
 
 
 def seed_security_defaults(db: Session) -> None:
-    """Ensure standard roles and default administrator exist in database."""
+    """Ensure standard roles and default evaluator accounts exist in database."""
     standard_roles = {
         "Admin": "System administrator with full privileges",
         "StoreManager": "Restaurant store manager with branch operational access",
@@ -246,19 +246,55 @@ def seed_security_defaults(db: Session) -> None:
             db.flush()
         created_roles[role_name] = role
 
-    # Ensure default admin account exists
-    admin_user = get_user_by_username(db, settings.DEFAULT_ADMIN_USERNAME)
-    if not admin_user:
-        logger.info("Bootstrapping default administrator '%s'", settings.DEFAULT_ADMIN_USERNAME)
-        admin_user = User(
-            username=settings.DEFAULT_ADMIN_USERNAME,
-            email=settings.DEFAULT_ADMIN_EMAIL,
-            hashed_password=get_password_hash(settings.DEFAULT_ADMIN_PASSWORD),
-            full_name="Default System Administrator",
-            is_active=True,
-            is_superuser=True,
-            roles=[created_roles["Admin"]],
-        )
-        db.add(admin_user)
+    # Ensure standard evaluator accounts exist for competition review and operational testing
+    evaluator_accounts = [
+        (
+            settings.DEFAULT_ADMIN_USERNAME,
+            settings.DEFAULT_ADMIN_EMAIL,
+            settings.DEFAULT_ADMIN_PASSWORD,
+            "Default System Administrator",
+            "Admin",
+            True,
+        ),
+        (
+            "manager",
+            "manager@dineiq.local",
+            "ManagerPass123!",
+            "Store Operations Manager",
+            "StoreManager",
+            False,
+        ),
+        (
+            "scientist",
+            "scientist@dineiq.local",
+            "ScientistPass123!",
+            "Staff Data Scientist",
+            "DataScientist",
+            False,
+        ),
+        (
+            "cashier",
+            "cashier@dineiq.local",
+            "CashierPass123!",
+            "Frontline Cashier",
+            "Cashier",
+            False,
+        ),
+    ]
+
+    for uname, email, pwd, fname, rolename, is_super in evaluator_accounts:
+        user = get_user_by_username(db, uname)
+        if not user:
+            logger.info("Bootstrapping default evaluator user '%s' (%s)", uname, rolename)
+            user = User(
+                username=uname,
+                email=email,
+                hashed_password=get_password_hash(pwd),
+                full_name=fname,
+                is_active=True,
+                is_superuser=is_super,
+                roles=[created_roles[rolename]],
+            )
+            db.add(user)
 
     db.commit()
