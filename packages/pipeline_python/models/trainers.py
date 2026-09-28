@@ -1,13 +1,20 @@
-"""Independent Python scikit-learn model training for DineIQ Analytics Phase 4.
+"""Independent Python scikit-learn model training for DineIQ Analytics Phase 6B.
 
-Trains four models using ONLY pandas DataFrames built by feature_builder.py.
-Never imports from packages.pipeline_spark. Writes outputs to data/marts/python/.
+Trains candidate models per task, performs validation-only champion selection,
+evaluates the selected champion on test data, and materialises predictions
+to data/marts/python/.
 
-Tasks:
-    1. Demand Forecast  → GradientBoostingRegressor
-    2. Wastage Risk     → GradientBoostingClassifier
-    3. Churn Risk       → GradientBoostingClassifier
-    4. Customer Segmentation → KMeans (scikit-learn)
+Never imports from packages.pipeline_spark.
+
+Tasks & Candidates:
+    1. Demand Forecast  → Ridge, RandomForestRegressor, GradientBoostingRegressor
+                          (Validation RMSE primary, MAE tie-breaker)
+    2. Wastage Risk     → LogisticRegression, RandomForestClassifier, GradientBoostingClassifier
+                          (Validation ROC-AUC primary, F1 tie-breaker)
+    3. Churn Risk       → LogisticRegression, RandomForestClassifier, GradientBoostingClassifier
+                          (Validation ROC-AUC primary, F1 tie-breaker)
+    4. Customer Segmentation → KMeans, GaussianMixture
+                          (Silhouette Score)
 """
 
 from __future__ import annotations
@@ -20,7 +27,13 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
-from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegressor
+from sklearn.ensemble import (
+    GradientBoostingClassifier,
+    GradientBoostingRegressor,
+    RandomForestClassifier,
+    RandomForestRegressor,
+)
+from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.metrics import (
     f1_score,
     mean_absolute_error,
@@ -30,6 +43,8 @@ from sklearn.metrics import (
     roc_auc_score,
     silhouette_score,
 )
+from sklearn.mixture import GaussianMixture
+from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from packages.common.logging import get_logger
@@ -128,9 +143,9 @@ def train_demand_forecast_python(
     output_dir: Path,
     artifact_dir: Path,
 ) -> dict[str, Any]:
-    """Train GradientBoostingRegressor for demand forecasting."""
-    t = time.time()
-    logger.info("[Python ML] Training Demand Forecast (GBR)...")
+    """Train candidate regression models, select champion on validation RMSE, materialise predictions."""
+    t_start = time.time()
+    logger.info("[Python ML] Training Demand Forecast multi-model candidate competition...")
 
     df_train, df_val, df_test = _split(df, "week_start_date")
     X_all = _encode_features(df, DEMAND_FEATURES)
@@ -142,22 +157,82 @@ def train_demand_forecast_python(
     X_test = X_all.loc[df_test.index]
     y_test = df_test[DEMAND_TARGET]
 
-    model = GradientBoostingRegressor(
-        n_estimators=60, max_depth=4, learning_rate=0.1, random_state=42
-    )
-    model.fit(X_train, y_train)
-
     def _reg_metrics(y_true: pd.Series, y_pred: np.ndarray) -> dict[str, float]:
         rmse = float(np.sqrt(mean_squared_error(y_true, y_pred)))
         mae = float(mean_absolute_error(y_true, y_pred))
         return {"rmse": round(rmse, 6), "mae": round(mae, 6)}
 
-    val_metrics = _reg_metrics(y_val, model.predict(X_val))
-    test_metrics = _reg_metrics(y_test, model.predict(X_test))
-    logger.info("[Python ML] Demand — VAL: %s | TEST: %s", val_metrics, test_metrics)
+    candidates_def = [
+        (
+            "Ridge",
+            make_pipeline(StandardScaler(), Ridge(alpha=1.0, random_state=42)),
+            {"alpha": 1.0, "random_state": 42},
+        ),
+        (
+            "RandomForestRegressor",
+            RandomForestRegressor(n_estimators=40, max_depth=5, random_state=42, n_jobs=-1),
+            {"n_estimators": 40, "max_depth": 5, "random_state": 42},
+        ),
+        (
+            "GradientBoostingRegressor",
+            GradientBoostingRegressor(
+                n_estimators=60, max_depth=4, learning_rate=0.1, random_state=42
+            ),
+            {"n_estimators": 60, "max_depth": 4, "learning_rate": 0.1, "random_state": 42},
+        ),
+    ]
 
-    # Materialise predictions across full dataframe
-    predictions = model.predict(X_all)
+    candidate_results: list[dict[str, Any]] = []
+    fitted_models: dict[str, Any] = {}
+
+    for name, estimator, params in candidates_def:
+        c_start = time.time()
+        estimator.fit(X_train, y_train)
+        c_duration = round(time.time() - c_start, 2)
+
+        val_pred = estimator.predict(X_val)
+        val_m = _reg_metrics(y_val, val_pred)
+
+        logger.info(
+            "[Python ML] Candidate %s — Val RMSE: %.4f | Val MAE: %.4f (took %.2fs)",
+            name,
+            val_m["rmse"],
+            val_m["mae"],
+            c_duration,
+        )
+        candidate_results.append(
+            {
+                "algorithm": name,
+                "hyperparameters": params,
+                "validation_metrics": val_m,
+                "training_duration_sec": c_duration,
+            }
+        )
+        fitted_models[name] = estimator
+
+    # Validation-based selection: lower RMSE primary, lower MAE tie-breaker
+    sorted_candidates = sorted(
+        candidate_results,
+        key=lambda x: (x["validation_metrics"]["rmse"], x["validation_metrics"]["mae"]),
+    )
+    champion_info = sorted_candidates[0]
+    champion_name = champion_info["algorithm"]
+    champion_model = fitted_models[champion_name]
+
+    val_metrics = champion_info["validation_metrics"]
+    test_metrics = _reg_metrics(y_test, champion_model.predict(X_test))
+
+    logger.info(
+        "[Python ML] Selected Champion: %s | Val RMSE: %.4f | Test RMSE: %.4f",
+        champion_name,
+        val_metrics["rmse"],
+        test_metrics["rmse"],
+    )
+
+    # Materialise predictions across full dataframe with champion model
+    raw_predictions = champion_model.predict(X_all)
+    predictions = np.clip(raw_predictions, 0.0, None)
+
     out_df = df[["week_start_date", "menu_item_id", "restaurant_id", DEMAND_TARGET, "split"]].copy()
     out_df["predicted_quantity"] = np.round(predictions, 2)
     out_df["absolute_error"] = np.round(
@@ -167,16 +242,26 @@ def train_demand_forecast_python(
     out_df["pipeline"] = "python"
 
     _save_parquet(out_df, output_dir, "ml_demand_forecast")
-    duration = round(time.time() - t, 2)
+    duration = round(time.time() - t_start, 2)
     meta: dict[str, Any] = {
         "pipeline": "python",
         "task": "demand_forecast",
-        "algorithm": "GradientBoostingRegressor",
+        "model_version": "v2.0-phase6b",
+        "selected_algorithm": champion_name,
+        "algorithm": champion_name,
+        "selection_criteria": "validation_rmse (lower is better, validation_mae tie-breaker)",
+        "selection_reason": (
+            f"{champion_name} selected with validation RMSE={val_metrics['rmse']:.4f} "
+            f"and MAE={val_metrics['mae']:.4f}"
+        ),
+        "candidates": candidate_results,
         "feature_cols": DEMAND_FEATURES,
         "target_col": DEMAND_TARGET,
         "rows_train": len(df_train),
         "rows_validation": len(df_val),
         "rows_test": len(df_test),
+        "validation_metrics": val_metrics,
+        "test_metrics": test_metrics,
         "metrics": {"validation": val_metrics, "test": test_metrics},
         "duration_sec": duration,
     }
@@ -192,9 +277,9 @@ def train_wastage_risk_python(
     output_dir: Path,
     artifact_dir: Path,
 ) -> dict[str, Any]:
-    """Train GradientBoostingClassifier for wastage risk."""
-    t = time.time()
-    logger.info("[Python ML] Training Wastage Risk (GBC)...")
+    """Train candidate classification models, select champion on validation ROC-AUC, materialise predictions."""
+    t_start = time.time()
+    logger.info("[Python ML] Training Wastage Risk multi-model candidate competition...")
 
     df_train, df_val, df_test = _split(df, "week_start_date")
     X_all = _encode_features(df, WASTAGE_FEATURES)
@@ -206,11 +291,6 @@ def train_wastage_risk_python(
     X_test = X_all.loc[df_test.index]
     y_test = df_test[WASTAGE_TARGET]
 
-    model = GradientBoostingClassifier(
-        n_estimators=60, max_depth=4, learning_rate=0.1, random_state=42
-    )
-    model.fit(X_train, y_train)
-
     def _cls_metrics(y_true: pd.Series, y_pred: np.ndarray, y_prob: np.ndarray) -> dict[str, float]:
         return {
             "roc_auc": round(float(roc_auc_score(y_true, y_prob)), 6),
@@ -219,12 +299,78 @@ def train_wastage_risk_python(
             "recall": round(float(recall_score(y_true, y_pred, zero_division=0)), 6),
         }
 
-    val_metrics = _cls_metrics(y_val, model.predict(X_val), model.predict_proba(X_val)[:, 1])
-    test_metrics = _cls_metrics(y_test, model.predict(X_test), model.predict_proba(X_test)[:, 1])
-    logger.info("[Python ML] Wastage Risk — VAL: %s | TEST: %s", val_metrics, test_metrics)
+    candidates_def = [
+        (
+            "LogisticRegression",
+            make_pipeline(StandardScaler(), LogisticRegression(max_iter=500, random_state=42)),
+            {"max_iter": 500, "random_state": 42},
+        ),
+        (
+            "RandomForestClassifier",
+            RandomForestClassifier(n_estimators=40, max_depth=5, random_state=42, n_jobs=-1),
+            {"n_estimators": 40, "max_depth": 5, "random_state": 42},
+        ),
+        (
+            "GradientBoostingClassifier",
+            GradientBoostingClassifier(
+                n_estimators=60, max_depth=4, learning_rate=0.1, random_state=42
+            ),
+            {"n_estimators": 60, "max_depth": 4, "learning_rate": 0.1, "random_state": 42},
+        ),
+    ]
 
-    preds = model.predict(X_all)
-    probs = model.predict_proba(X_all)[:, 1]
+    candidate_results: list[dict[str, Any]] = []
+    fitted_models: dict[str, Any] = {}
+
+    for name, estimator, params in candidates_def:
+        c_start = time.time()
+        estimator.fit(X_train, y_train)
+        c_duration = round(time.time() - c_start, 2)
+
+        val_pred = estimator.predict(X_val)
+        val_prob = estimator.predict_proba(X_val)[:, 1]
+        val_m = _cls_metrics(y_val, val_pred, val_prob)
+
+        logger.info(
+            "[Python ML] Candidate %s — Val ROC-AUC: %.4f | Val F1: %.4f (took %.2fs)",
+            name,
+            val_m["roc_auc"],
+            val_m["f1"],
+            c_duration,
+        )
+        candidate_results.append(
+            {
+                "algorithm": name,
+                "hyperparameters": params,
+                "validation_metrics": val_m,
+                "training_duration_sec": c_duration,
+            }
+        )
+        fitted_models[name] = estimator
+
+    # Validation-based selection: higher ROC-AUC primary, higher F1 tie-breaker
+    sorted_candidates = sorted(
+        candidate_results,
+        key=lambda x: (-x["validation_metrics"]["roc_auc"], -x["validation_metrics"]["f1"]),
+    )
+    champion_info = sorted_candidates[0]
+    champion_name = champion_info["algorithm"]
+    champion_model = fitted_models[champion_name]
+
+    val_metrics = champion_info["validation_metrics"]
+    test_pred = champion_model.predict(X_test)
+    test_prob = champion_model.predict_proba(X_test)[:, 1]
+    test_metrics = _cls_metrics(y_test, test_pred, test_prob)
+
+    logger.info(
+        "[Python ML] Selected Champion: %s | Val ROC-AUC: %.4f | Test ROC-AUC: %.4f",
+        champion_name,
+        val_metrics["roc_auc"],
+        test_metrics["roc_auc"],
+    )
+
+    preds = champion_model.predict(X_all)
+    probs = champion_model.predict_proba(X_all)[:, 1]
     out_df = df[
         ["week_start_date", "menu_item_id", "restaurant_id", WASTAGE_TARGET, "split"]
     ].copy()
@@ -234,16 +380,26 @@ def train_wastage_risk_python(
     out_df["pipeline"] = "python"
 
     _save_parquet(out_df, output_dir, "ml_wastage_risk")
-    duration = round(time.time() - t, 2)
+    duration = round(time.time() - t_start, 2)
     meta: dict[str, Any] = {
         "pipeline": "python",
         "task": "wastage_risk",
-        "algorithm": "GradientBoostingClassifier",
+        "model_version": "v2.0-phase6b",
+        "selected_algorithm": champion_name,
+        "algorithm": champion_name,
+        "selection_criteria": "validation_roc_auc (higher is better, validation_f1 tie-breaker)",
+        "selection_reason": (
+            f"{champion_name} selected with validation ROC-AUC={val_metrics['roc_auc']:.4f} "
+            f"and F1={val_metrics['f1']:.4f}"
+        ),
+        "candidates": candidate_results,
         "feature_cols": WASTAGE_FEATURES,
         "target_col": WASTAGE_TARGET,
         "rows_train": len(df_train),
         "rows_validation": len(df_val),
         "rows_test": len(df_test),
+        "validation_metrics": val_metrics,
+        "test_metrics": test_metrics,
         "metrics": {"validation": val_metrics, "test": test_metrics},
         "duration_sec": duration,
     }
@@ -259,9 +415,9 @@ def train_churn_risk_python(
     output_dir: Path,
     artifact_dir: Path,
 ) -> dict[str, Any]:
-    """Train GradientBoostingClassifier for churn risk on full RFM feature set."""
-    t = time.time()
-    logger.info("[Python ML] Training Churn Risk (GBC)...")
+    """Train candidate classification models, select champion on validation ROC-AUC, materialise predictions."""
+    t_start = time.time()
+    logger.info("[Python ML] Training Churn Risk multi-model candidate competition...")
 
     # RFM is a single-snapshot mart; split by recency proxy
     df_train = df[df["split"] == "TRAIN"]
@@ -275,11 +431,6 @@ def train_churn_risk_python(
     X_test = df_test[CHURN_FEATURES].fillna(0)
     y_test = df_test[CHURN_TARGET]
 
-    model = GradientBoostingClassifier(
-        n_estimators=100, max_depth=4, learning_rate=0.1, random_state=42
-    )
-    model.fit(X_train, y_train)
-
     def _cls_metrics(y_true: pd.Series, y_pred: np.ndarray, y_prob: np.ndarray) -> dict[str, float]:
         if len(y_true) == 0 or len(np.unique(y_true)) < 2:
             return {"roc_auc": 0.0, "f1": 0.0, "precision": 0.0, "recall": 0.0}
@@ -290,13 +441,79 @@ def train_churn_risk_python(
             "recall": round(float(recall_score(y_true, y_pred, zero_division=0)), 6),
         }
 
-    val_metrics = _cls_metrics(y_val, model.predict(X_val), model.predict_proba(X_val)[:, 1])
-    test_metrics = _cls_metrics(y_test, model.predict(X_test), model.predict_proba(X_test)[:, 1])
-    logger.info("[Python ML] Churn Risk — VAL: %s | TEST: %s", val_metrics, test_metrics)
+    candidates_def = [
+        (
+            "LogisticRegression",
+            make_pipeline(StandardScaler(), LogisticRegression(max_iter=500, random_state=42)),
+            {"max_iter": 500, "random_state": 42},
+        ),
+        (
+            "RandomForestClassifier",
+            RandomForestClassifier(n_estimators=40, max_depth=5, random_state=42, n_jobs=-1),
+            {"n_estimators": 40, "max_depth": 5, "random_state": 42},
+        ),
+        (
+            "GradientBoostingClassifier",
+            GradientBoostingClassifier(
+                n_estimators=60, max_depth=4, learning_rate=0.1, random_state=42
+            ),
+            {"n_estimators": 60, "max_depth": 4, "learning_rate": 0.1, "random_state": 42},
+        ),
+    ]
+
+    candidate_results: list[dict[str, Any]] = []
+    fitted_models: dict[str, Any] = {}
+
+    for name, estimator, params in candidates_def:
+        c_start = time.time()
+        estimator.fit(X_train, y_train)
+        c_duration = round(time.time() - c_start, 2)
+
+        val_pred = estimator.predict(X_val)
+        val_prob = estimator.predict_proba(X_val)[:, 1]
+        val_m = _cls_metrics(y_val, val_pred, val_prob)
+
+        logger.info(
+            "[Python ML] Candidate %s — Val ROC-AUC: %.4f | Val F1: %.4f (took %.2fs)",
+            name,
+            val_m["roc_auc"],
+            val_m["f1"],
+            c_duration,
+        )
+        candidate_results.append(
+            {
+                "algorithm": name,
+                "hyperparameters": params,
+                "validation_metrics": val_m,
+                "training_duration_sec": c_duration,
+            }
+        )
+        fitted_models[name] = estimator
+
+    # Validation-based selection: higher ROC-AUC primary, higher F1 tie-breaker
+    sorted_candidates = sorted(
+        candidate_results,
+        key=lambda x: (-x["validation_metrics"]["roc_auc"], -x["validation_metrics"]["f1"]),
+    )
+    champion_info = sorted_candidates[0]
+    champion_name = champion_info["algorithm"]
+    champion_model = fitted_models[champion_name]
+
+    val_metrics = champion_info["validation_metrics"]
+    test_pred = champion_model.predict(X_test)
+    test_prob = champion_model.predict_proba(X_test)[:, 1]
+    test_metrics = _cls_metrics(y_test, test_pred, test_prob)
+
+    logger.info(
+        "[Python ML] Selected Champion: %s | Val ROC-AUC: %.4f | Test ROC-AUC: %.4f",
+        champion_name,
+        val_metrics["roc_auc"],
+        test_metrics["roc_auc"],
+    )
 
     X_all = df[CHURN_FEATURES].fillna(0)
-    preds = model.predict(X_all)
-    probs = model.predict_proba(X_all)[:, 1]
+    preds = champion_model.predict(X_all)
+    probs = champion_model.predict_proba(X_all)[:, 1]
     out_df = df[
         [
             "customer_id",
@@ -314,16 +531,26 @@ def train_churn_risk_python(
     out_df["pipeline"] = "python"
 
     _save_parquet(out_df, output_dir, "ml_churn_risk")
-    duration = round(time.time() - t, 2)
+    duration = round(time.time() - t_start, 2)
     meta: dict[str, Any] = {
         "pipeline": "python",
         "task": "churn_risk",
-        "algorithm": "GradientBoostingClassifier",
+        "model_version": "v2.0-phase6b",
+        "selected_algorithm": champion_name,
+        "algorithm": champion_name,
+        "selection_criteria": "validation_roc_auc (higher is better, validation_f1 tie-breaker)",
+        "selection_reason": (
+            f"{champion_name} selected with validation ROC-AUC={val_metrics['roc_auc']:.4f} "
+            f"and F1={val_metrics['f1']:.4f}"
+        ),
+        "candidates": candidate_results,
         "feature_cols": CHURN_FEATURES,
         "target_col": CHURN_TARGET,
         "rows_train": len(df_train),
         "rows_validation": len(df_val),
         "rows_test": len(df_test),
+        "validation_metrics": val_metrics,
+        "test_metrics": test_metrics,
         "metrics": {"validation": val_metrics, "test": test_metrics},
         "duration_sec": duration,
     }
@@ -339,25 +566,86 @@ def train_customer_segmentation_python(
     output_dir: Path,
     artifact_dir: Path,
 ) -> dict[str, Any]:
-    """Run scikit-learn KMeans segmentation on RFM features."""
-    t = time.time()
-    logger.info("[Python ML] Training Customer Segmentation (KMeans k=%d)...", K_CLUSTERS)
+    """Run candidate clustering models (KMeans, GaussianMixture), select champion by Silhouette score."""
+    t_start = time.time()
+    logger.info("[Python ML] Training Customer Segmentation candidate competition...")
 
     X = df[SEG_FEATURES].fillna(0).values
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    kmeans = KMeans(n_clusters=K_CLUSTERS, random_state=42, n_init=10, max_iter=300)
-    cluster_ids = kmeans.fit_predict(X_scaled)
+    candidates_def = [
+        (
+            "KMeans",
+            KMeans(n_clusters=K_CLUSTERS, random_state=42, n_init=10, max_iter=300),
+            {"n_clusters": K_CLUSTERS, "random_state": 42, "n_init": 10, "max_iter": 300},
+        ),
+        (
+            "GaussianMixture",
+            GaussianMixture(n_components=K_CLUSTERS, random_state=42),
+            {"n_components": K_CLUSTERS, "random_state": 42},
+        ),
+    ]
 
-    sil = round(
-        float(silhouette_score(X_scaled, cluster_ids, sample_size=min(5000, len(X_scaled)))), 6
+    candidate_results: list[dict[str, Any]] = []
+    fitted_candidates: dict[str, tuple[np.ndarray, np.ndarray]] = {}
+
+    sample_size = min(5000, len(X_scaled))
+
+    for name, estimator, params in candidates_def:
+        c_start = time.time()
+        cluster_ids = estimator.fit_predict(X_scaled)
+        c_duration = round(time.time() - c_start, 2)
+
+        sil = round(
+            float(
+                silhouette_score(X_scaled, cluster_ids, sample_size=sample_size, random_state=42)
+            ),
+            6,
+        )
+        logger.info(
+            "[Python ML] Candidate %s — Silhouette Score: %.4f (took %.2fs)", name, sil, c_duration
+        )
+
+        if hasattr(estimator, "cluster_centers_"):
+            raw_centers = estimator.cluster_centers_
+        elif hasattr(estimator, "means_"):
+            raw_centers = estimator.means_
+        else:
+            raw_centers = np.array(
+                [X_scaled[cluster_ids == i].mean(axis=0) for i in range(K_CLUSTERS)]
+            )
+
+        candidate_results.append(
+            {
+                "algorithm": name,
+                "hyperparameters": params,
+                "validation_metrics": {"silhouette_score": sil},
+                "training_duration_sec": c_duration,
+            }
+        )
+        fitted_candidates[name] = (cluster_ids, raw_centers)
+
+    # Champion selection: highest silhouette score
+    sorted_candidates = sorted(
+        candidate_results,
+        key=lambda x: x["validation_metrics"]["silhouette_score"],
+        reverse=True,
     )
-    logger.info("[Python ML] KMeans Silhouette: %.4f", sil)
+    champion_info = sorted_candidates[0]
+    champion_name = champion_info["algorithm"]
+    best_sil = champion_info["validation_metrics"]["silhouette_score"]
+    cluster_ids, centers_scaled = fitted_candidates[champion_name]
+
+    logger.info(
+        "[Python ML] Selected Champion: %s with Silhouette score %.4f",
+        champion_name,
+        best_sil,
+    )
 
     # Assign segment labels by centroid RFM ordering
     centers = pd.DataFrame(
-        scaler.inverse_transform(kmeans.cluster_centers_),
+        scaler.inverse_transform(centers_scaled),
         columns=SEG_FEATURES,
     )
     centers["cluster_id"] = range(K_CLUSTERS)
@@ -376,16 +664,26 @@ def train_customer_segmentation_python(
     out_df["pipeline"] = "python"
 
     _save_parquet(out_df, output_dir, "ml_customer_segmentation")
-    duration = round(time.time() - t, 2)
+    duration = round(time.time() - t_start, 2)
     meta: dict[str, Any] = {
         "pipeline": "python",
         "task": "customer_segmentation",
-        "algorithm": "KMeans",
+        "model_version": "v2.0-phase6b",
+        "selected_algorithm": champion_name,
+        "algorithm": champion_name,
+        "selection_criteria": "silhouette_score (higher is better)",
+        "selection_reason": f"{champion_name} achieved highest Silhouette score ({best_sil:.4f})",
+        "candidates": candidate_results,
         "k": K_CLUSTERS,
         "feature_cols": SEG_FEATURES,
-        "silhouette_score": sil,
+        "silhouette_score": best_sil,
+        "validation_metrics": {"silhouette_score": best_sil},
+        "test_metrics": {"silhouette_score": best_sil},
         "segment_labels": label_map,
         "total_customers": len(out_df),
+        "rows_train": len(out_df),
+        "rows_validation": len(out_df),
+        "rows_test": len(out_df),
         "duration_sec": duration,
     }
     (artifact_dir / "python_customer_segmentation_metadata.json").write_text(

@@ -19,7 +19,7 @@ from typing import Any
 from pyspark.ml import Pipeline
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.feature import StringIndexer, VectorAssembler
-from pyspark.ml.regression import GBTRegressor
+from pyspark.ml.regression import GBTRegressor, LinearRegression, RandomForestRegressor
 from pyspark.sql import DataFrame, SparkSession, Window
 from pyspark.sql import functions as F
 
@@ -133,7 +133,12 @@ def train_demand_forecast(
     output_dir: str | Path = "data/marts/spark",
     artifact_dir: str | Path = "data/artifacts",
 ) -> dict[str, Any]:
-    """Train GBTRegressor on mart_demand_historical and materialise predictions.
+    """Train multiple candidate models on mart_demand_historical, select champion, and materialise.
+
+    Candidates evaluated on validation split (RMSE primary, MAE tie-breaker):
+        1. LinearRegression
+        2. RandomForestRegressor
+        3. GBTRegressor
 
     Args:
         spark: Active SparkSession.
@@ -142,8 +147,7 @@ def train_demand_forecast(
         artifact_dir: Destination for model metadata JSON.
 
     Returns:
-        Dictionary with keys: rmse_validation, mae_validation, rmse_test,
-        mae_test, rows_train, rows_val, rows_test, duration_sec.
+        Dictionary with champion metrics, candidate evaluations, and duration.
     """
     t_start = time.time()
     mart_dir = Path(mart_dir).resolve()
@@ -172,7 +176,7 @@ def train_demand_forecast(
         "[Spark ML] Temporal split — TRAIN=%d, VAL=%d, TEST=%d", rows_train, rows_val, rows_test
     )
 
-    # ── Pipeline ──────────────────────────────────────────────────────────────
+    # ── Feature Preparation Pipeline (fit on TRAIN only) ──────────────────────
     indexer_cat = StringIndexer(
         inputCol="category_id", outputCol="category_idx", handleInvalid="keep"
     )
@@ -180,20 +184,13 @@ def train_demand_forecast(
         inputCol="restaurant_id", outputCol="restaurant_idx", handleInvalid="keep"
     )
     assembler = VectorAssembler(inputCols=FEATURE_COLS, outputCol="features", handleInvalid="skip")
-    gbt = GBTRegressor(
-        featuresCol="features",
-        labelCol=TARGET_COL,
-        maxIter=25,
-        maxDepth=4,
-        stepSize=0.1,
-        seed=42,
-    )
-    pipeline = Pipeline(stages=[indexer_cat, indexer_rest, assembler, gbt])
+    prep_pipeline = Pipeline(stages=[indexer_cat, indexer_rest, assembler])
+    prep_model = prep_pipeline.fit(df_train)
 
-    logger.info("[Spark ML] Training GBTRegressor on %d rows...", rows_train)
-    model = pipeline.fit(df_train)
+    train_prep = prep_model.transform(df_train).persist()
+    val_prep = prep_model.transform(df_val).persist()
+    test_prep = prep_model.transform(df_test).persist()
 
-    # ── Evaluation ────────────────────────────────────────────────────────────
     evaluator_rmse = RegressionEvaluator(
         labelCol=TARGET_COL, predictionCol="prediction", metricName="rmse"
     )
@@ -201,36 +198,115 @@ def train_demand_forecast(
         labelCol=TARGET_COL, predictionCol="prediction", metricName="mae"
     )
 
-    df_val_pred = model.transform(df_val)
-    df_test_pred = model.transform(df_test)
+    # ── Candidate Model Competition ───────────────────────────────────────────
+    candidates_config = [
+        {
+            "name": "LinearRegression",
+            "model": LinearRegression(
+                featuresCol="features", labelCol=TARGET_COL, regParam=0.1, maxIter=50
+            ),
+            "hyperparameters": {"regParam": 0.1, "maxIter": 50},
+        },
+        {
+            "name": "RandomForestRegressor",
+            "model": RandomForestRegressor(
+                featuresCol="features", labelCol=TARGET_COL, numTrees=20, maxDepth=5, seed=42
+            ),
+            "hyperparameters": {"numTrees": 20, "maxDepth": 5, "seed": 42},
+        },
+        {
+            "name": "GBTRegressor",
+            "model": GBTRegressor(
+                featuresCol="features",
+                labelCol=TARGET_COL,
+                maxIter=25,
+                maxDepth=4,
+                stepSize=0.1,
+                seed=42,
+            ),
+            "hyperparameters": {"maxIter": 25, "maxDepth": 4, "stepSize": 0.1, "seed": 42},
+        },
+    ]
 
-    rmse_val = evaluator_rmse.evaluate(df_val_pred)
-    mae_val = evaluator_mae.evaluate(df_val_pred)
-    rmse_test = evaluator_rmse.evaluate(df_test_pred)
-    mae_test = evaluator_mae.evaluate(df_test_pred)
+    candidates_meta: list[dict[str, Any]] = []
+    trained_candidates = []
 
     logger.info(
-        "[Spark ML] Demand Forecast — VAL: RMSE=%.4f MAE=%.4f | TEST: RMSE=%.4f MAE=%.4f",
-        rmse_val,
-        mae_val,
-        rmse_test,
-        mae_test,
+        "[Spark ML] Evaluating %d candidate regression algorithms...", len(candidates_config)
+    )
+    for c in candidates_config:
+        t_c = time.time()
+        logger.info("[Spark ML] Training candidate: %s...", c["name"])
+        fitted_model = c["model"].fit(train_prep)
+        duration_c = round(time.time() - t_c, 2)
+
+        val_pred = fitted_model.transform(val_prep)
+        rmse_val = float(evaluator_rmse.evaluate(val_pred))
+        mae_val = float(evaluator_mae.evaluate(val_pred))
+        logger.info(
+            "[Spark ML] Candidate %s — Validation: RMSE=%.4f, MAE=%.4f (%.2fs)",
+            c["name"],
+            rmse_val,
+            mae_val,
+            duration_c,
+        )
+
+        c_meta = {
+            "algorithm": c["name"],
+            "hyperparameters": c["hyperparameters"],
+            "validation_metrics": {"rmse": round(rmse_val, 6), "mae": round(mae_val, 6)},
+            "training_duration_sec": duration_c,
+        }
+        candidates_meta.append(c_meta)
+        trained_candidates.append(
+            {
+                "name": c["name"],
+                "model": fitted_model,
+                "meta": c_meta,
+                "rmse_val": rmse_val,
+                "mae_val": mae_val,
+            }
+        )
+
+    # ── Champion Selection (VALIDATION only: lowest RMSE, MAE tie-breaker) ────
+    ranked_candidates = sorted(trained_candidates, key=lambda x: (x["rmse_val"], x["mae_val"]))
+    champion = ranked_candidates[0]
+    logger.info(
+        "[Spark ML] Champion selected: %s (Validation RMSE=%.4f, MAE=%.4f)",
+        champion["name"],
+        champion["rmse_val"],
+        champion["mae_val"],
     )
 
-    # ── Materialise predictions (train + val + test combined) ─────────────────
-    df_all_pred = model.transform(df).select(
-        "week_start_date",
-        "menu_item_id",
-        "restaurant_id",
-        F.col(TARGET_COL).alias("actual_quantity"),
-        F.round(F.col("prediction"), 2).alias("predicted_quantity"),
-        F.round(F.abs(F.col(TARGET_COL) - F.col("prediction")), 2).alias("absolute_error"),
-        F.when(F.col("week_start_date") <= TRAIN_END, "TRAIN")
-        .when(F.col("week_start_date") <= VALIDATION_END, "VALIDATION")
-        .when(F.col("week_start_date") <= TEST_END, "TEST")
-        .otherwise("UNSEEN_COMPARISON")
-        .alias("split"),
-        F.lit("spark").alias("pipeline"),
+    # ── Out-of-sample Test Evaluation on Champion Only ─────────────────────────
+    test_pred = champion["model"].transform(test_prep)
+    rmse_test = float(evaluator_rmse.evaluate(test_pred))
+    mae_test = float(evaluator_mae.evaluate(test_pred))
+    logger.info(
+        "[Spark ML] Champion %s Test: RMSE=%.4f, MAE=%.4f", champion["name"], rmse_test, mae_test
+    )
+
+    # ── Materialise Predictions with Selected Champion ────────────────────────
+    full_prep = prep_model.transform(df)
+    df_all_pred = (
+        champion["model"]
+        .transform(full_prep)
+        .select(
+            "week_start_date",
+            "menu_item_id",
+            "restaurant_id",
+            F.col(TARGET_COL).alias("actual_quantity"),
+            F.when(F.col("prediction") < 0, F.lit(0.0))
+            .otherwise(F.round(F.col("prediction"), 2))
+            .alias("predicted_quantity"),
+            F.round(F.abs(F.col(TARGET_COL) - F.col("prediction")), 2).alias("absolute_error"),
+            F.when(F.col("week_start_date") <= TRAIN_END, "TRAIN")
+            .when(F.col("week_start_date") <= VALIDATION_END, "VALIDATION")
+            .when(F.col("week_start_date") <= TEST_END, "TEST")
+            .otherwise("UNSEEN_COMPARISON")
+            .alias("split"),
+            F.lit("spark").alias("pipeline"),
+        )
     )
 
     out_path = output_dir / "ml_demand_forecast.parquet"
@@ -245,12 +321,24 @@ def train_demand_forecast(
     total_rows = df_all_pred.count()
     logger.info("[Spark ML] Materialised ml_demand_forecast.parquet: %d rows", total_rows)
 
-    # ── Model metadata JSON ───────────────────────────────────────────────────
+    # Clean up persisted DataFrames
+    train_prep.unpersist()
+    val_prep.unpersist()
+    test_prep.unpersist()
+
+    # ── Model Metadata JSON ───────────────────────────────────────────────────
     duration = round(time.time() - t_start, 2)
     metadata: dict[str, Any] = {
         "pipeline": "spark",
         "task": "demand_forecast",
-        "algorithm": "GBTRegressor",
+        "selected_algorithm": champion["name"],
+        "algorithm": champion["name"],
+        "selection_criteria": "validation_rmse (lower is better, MAE tie-breaker)",
+        "selection_reason": (
+            f"Lowest validation RMSE ({champion['rmse_val']:.6f}) among "
+            f"{len(candidates_config)} evaluated Spark MLlib candidates"
+        ),
+        "candidates": candidates_meta,
         "feature_cols": FEATURE_COLS,
         "target_col": TARGET_COL,
         "train_end": TRAIN_END,
@@ -260,10 +348,11 @@ def train_demand_forecast(
         "rows_validation": rows_val,
         "rows_test": rows_test,
         "metrics": {
-            "validation": {"rmse": round(rmse_val, 6), "mae": round(mae_val, 6)},
+            "validation": champion["meta"]["validation_metrics"],
             "test": {"rmse": round(rmse_test, 6), "mae": round(mae_test, 6)},
         },
         "duration_sec": duration,
+        "model_version": "v2.0-phase6b",
     }
     meta_path = artifact_dir / "spark_demand_forecast_metadata.json"
     meta_path.write_text(json.dumps(metadata, indent=2))

@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from pyspark.ml import Pipeline
-from pyspark.ml.clustering import KMeans
+from pyspark.ml.clustering import BisectingKMeans, KMeans
 from pyspark.ml.evaluation import ClusteringEvaluator
 from pyspark.ml.feature import StandardScaler, VectorAssembler
 from pyspark.sql import DataFrame, SparkSession
@@ -84,7 +84,7 @@ def train_customer_segmentation(
     output_dir: str | Path = "data/marts/spark",
     artifact_dir: str | Path = "data/artifacts",
 ) -> dict[str, Any]:
-    """Run KMeans customer segmentation and materialise segment assignments."""
+    """Run candidate clustering algorithms and select the champion by Silhouette score."""
     t_start = time.time()
     mart_dir = Path(mart_dir).resolve()
     output_dir = Path(output_dir).resolve()
@@ -105,29 +105,86 @@ def train_customer_segmentation(
     scaler = StandardScaler(
         inputCol="raw_features", outputCol="features", withMean=True, withStd=True
     )
-    kmeans = KMeans(
-        featuresCol="features",
-        predictionCol="prediction",
-        k=K_CLUSTERS,
-        seed=42,
-        maxIter=50,
-    )
-    pipeline = Pipeline(stages=[assembler, scaler, kmeans])
+    prep_pipeline = Pipeline(stages=[assembler, scaler])
+    prep_model = prep_pipeline.fit(df)
+    df_prepped = prep_model.transform(df).persist()
 
-    logger.info("[Spark ML] Running KMeans (k=%d) on %d customers...", K_CLUSTERS, df.count())
-    model = pipeline.fit(df)
+    total_customers = df_prepped.count()
+    logger.info("[Spark ML] Evaluating clustering candidates on %d customers...", total_customers)
 
-    df_pred = model.transform(df)
-
-    # Silhouette score
     evaluator = ClusteringEvaluator(
         featuresCol="features", predictionCol="prediction", metricName="silhouette"
     )
-    silhouette = round(evaluator.evaluate(df_pred), 6)
-    logger.info("[Spark ML] KMeans Silhouette Score: %.4f", silhouette)
+
+    candidates_def = [
+        (
+            "KMeans",
+            KMeans(
+                featuresCol="features",
+                predictionCol="prediction",
+                k=K_CLUSTERS,
+                seed=42,
+                maxIter=50,
+            ),
+            {"k": K_CLUSTERS, "seed": 42, "maxIter": 50},
+        ),
+        (
+            "BisectingKMeans",
+            BisectingKMeans(
+                featuresCol="features",
+                predictionCol="prediction",
+                k=K_CLUSTERS,
+                seed=42,
+                maxIter=50,
+            ),
+            {"k": K_CLUSTERS, "seed": 42, "maxIter": 50},
+        ),
+    ]
+
+    candidate_results: list[dict[str, Any]] = []
+    fitted_models: dict[str, Any] = {}
+
+    for name, estimator, params in candidates_def:
+        c_start = time.time()
+        c_model = estimator.fit(df_prepped)
+        c_duration = round(time.time() - c_start, 2)
+        c_pred = c_model.transform(df_prepped)
+        c_silhouette = round(float(evaluator.evaluate(c_pred)), 6)
+        logger.info(
+            "[Spark ML] Candidate %s Silhouette Score: %.4f (took %.2fs)",
+            name,
+            c_silhouette,
+            c_duration,
+        )
+        candidate_results.append(
+            {
+                "algorithm": name,
+                "hyperparameters": params,
+                "validation_metrics": {"silhouette_score": c_silhouette},
+                "training_duration_sec": c_duration,
+            }
+        )
+        fitted_models[name] = (c_model, c_pred)
+
+    # Champion selection: highest silhouette score
+    sorted_candidates = sorted(
+        candidate_results,
+        key=lambda x: x["validation_metrics"]["silhouette_score"],
+        reverse=True,
+    )
+    champion_info = sorted_candidates[0]
+    champion_name = champion_info["algorithm"]
+    champion_model, df_champion_pred = fitted_models[champion_name]
+    best_silhouette = champion_info["validation_metrics"]["silhouette_score"]
+
+    logger.info(
+        "[Spark ML] Selected Champion: %s with Silhouette score %.4f",
+        champion_name,
+        best_silhouette,
+    )
 
     # Assign human-readable segment labels
-    df_labelled = _assign_segment_labels(spark, df_pred)
+    df_labelled = _assign_segment_labels(spark, df_champion_pred)
 
     # Materialise
     df_out = df_labelled.select(
@@ -152,16 +209,28 @@ def train_customer_segmentation(
     total_rows = df_out.count()
     logger.info("[Spark ML] Materialised ml_customer_segmentation.parquet: %d rows", total_rows)
 
+    df_prepped.unpersist()
+
     duration = round(time.time() - t_start, 2)
     metadata: dict[str, Any] = {
         "pipeline": "spark",
         "task": "customer_segmentation",
-        "algorithm": "KMeans",
+        "model_version": "v2.0-phase6b",
+        "selected_algorithm": champion_name,
+        "algorithm": champion_name,
+        "selection_criteria": "silhouette_score (higher is better)",
+        "selection_reason": f"{champion_name} achieved highest Silhouette score ({best_silhouette:.4f})",
+        "candidates": candidate_results,
         "k": K_CLUSTERS,
         "feature_cols": FEATURE_COLS,
-        "silhouette_score": silhouette,
+        "silhouette_score": best_silhouette,
+        "validation_metrics": {"silhouette_score": best_silhouette},
+        "test_metrics": {"silhouette_score": best_silhouette},
         "segment_labels": SEGMENT_LABELS,
         "total_customers": total_rows,
+        "rows_train": total_rows,
+        "rows_validation": total_rows,
+        "rows_test": total_rows,
         "duration_sec": duration,
     }
     meta_path = artifact_dir / "spark_customer_segmentation_metadata.json"

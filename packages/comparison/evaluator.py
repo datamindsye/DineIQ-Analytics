@@ -291,15 +291,29 @@ def _save_summary(data: dict[str, Any], output_dir: Path, filename: str) -> None
     logger.info("[Comparison] Saved summary: %s", filename)
 
 
+def _get_selected_algorithm(artifact_dir: Path, pipeline: str, task: str) -> str | None:
+    """Read selected algorithm from pipeline task metadata if available."""
+    path = artifact_dir / f"{pipeline}_{task}_metadata.json"
+    if path.exists():
+        try:
+            data = json.loads(path.read_text())
+            return data.get("selected_algorithm") or data.get("algorithm")
+        except Exception:
+            return None
+    return None
+
+
 def run_full_comparison(
     spark_dir: str | Path = "data/marts/spark",
     python_dir: str | Path = "data/marts/python",
     output_dir: str | Path = "data/marts/comparison",
+    artifact_dir: str | Path = "data/artifacts",
 ) -> dict[str, Any]:
     """Execute all four cross-pipeline comparisons and return aggregated summary."""
     spark_dir = Path(spark_dir).resolve()
     python_dir = Path(python_dir).resolve()
     output_dir = Path(output_dir).resolve()
+    artifact_dir = Path(artifact_dir).resolve()
 
     logger.info("=" * 60)
     logger.info("DineIQ Cross-Pipeline Comparison Engine Starting")
@@ -308,7 +322,6 @@ def run_full_comparison(
     results: dict[str, Any] = {}
 
     results["demand_forecast"] = compare_demand_forecast(spark_dir, python_dir, output_dir)
-
     results["wastage_risk"] = compare_classification(
         task="wastage_risk",
         spark_dir=spark_dir,
@@ -330,6 +343,17 @@ def run_full_comparison(
     )
 
     results["customer_segmentation"] = compare_segmentation(spark_dir, python_dir, output_dir)
+
+    # Attach selected algorithms to task summaries
+    for task_name in ["demand_forecast", "wastage_risk", "churn_risk", "customer_segmentation"]:
+        if task_name in results and isinstance(results[task_name], dict):
+            s_algo = _get_selected_algorithm(artifact_dir, "spark", task_name)
+            p_algo = _get_selected_algorithm(artifact_dir, "python", task_name)
+            if s_algo:
+                results[task_name]["spark_selected_algorithm"] = s_algo
+            if p_algo:
+                results[task_name]["python_selected_algorithm"] = p_algo
+            _save_summary(results[task_name], output_dir, f"comparison_{task_name}_summary.json")
 
     # Aggregate summary
     agreement_values = [

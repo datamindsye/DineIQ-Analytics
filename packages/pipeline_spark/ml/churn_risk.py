@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from pyspark.ml import Pipeline
-from pyspark.ml.classification import GBTClassifier
+from pyspark.ml.classification import GBTClassifier, LogisticRegression, RandomForestClassifier
 from pyspark.ml.evaluation import BinaryClassificationEvaluator, MulticlassClassificationEvaluator
 from pyspark.ml.feature import VectorAssembler
 from pyspark.sql import DataFrame, SparkSession
@@ -104,7 +104,16 @@ def train_churn_risk(
     output_dir: str | Path = "data/marts/spark",
     artifact_dir: str | Path = "data/artifacts",
 ) -> dict[str, Any]:
-    """Train GBTClassifier for churn risk and materialise predictions."""
+    """Train multiple candidate models for churn risk, select champion, and materialise.
+
+    Candidates evaluated on validation split (ROC-AUC primary, F1 tie-breaker):
+        1. LogisticRegression
+        2. RandomForestClassifier
+        3. GBTClassifier
+
+    Returns:
+        Metadata dict with champion metrics, candidate evaluations, and duration.
+    """
     t_start = time.time()
     mart_dir = Path(mart_dir).resolve()
     output_dir = Path(output_dir).resolve()
@@ -125,18 +134,12 @@ def train_churn_risk(
     )
 
     assembler = VectorAssembler(inputCols=FEATURE_COLS, outputCol="features", handleInvalid="skip")
-    gbt = GBTClassifier(
-        featuresCol="features",
-        labelCol=TARGET_COL,
-        maxIter=50,
-        maxDepth=5,
-        stepSize=0.1,
-        seed=42,
-    )
-    pipeline = Pipeline(stages=[assembler, gbt])
+    prep_pipeline = Pipeline(stages=[assembler])
+    prep_model = prep_pipeline.fit(df_train)
 
-    logger.info("[Spark ML] Training GBTClassifier for churn on %d rows...", rows_train)
-    model = pipeline.fit(df_train)
+    train_prep = prep_model.transform(df_train).persist()
+    val_prep = prep_model.transform(df_val).persist()
+    test_prep = prep_model.transform(df_test).persist()
 
     auc_eval = BinaryClassificationEvaluator(
         labelCol=TARGET_COL, rawPredictionCol="rawPrediction", metricName="areaUnderROC"
@@ -151,22 +154,100 @@ def train_churn_risk(
         labelCol=TARGET_COL, predictionCol="prediction", metricName="weightedRecall"
     )
 
-    df_val_pred = model.transform(df_val)
-    df_test_pred = model.transform(df_test)
-
     def _eval(pred_df: DataFrame) -> dict[str, float]:
         return {
-            "roc_auc": round(auc_eval.evaluate(pred_df), 6),
-            "f1": round(f1_eval.evaluate(pred_df), 6),
-            "precision": round(prec_eval.evaluate(pred_df), 6),
-            "recall": round(rec_eval.evaluate(pred_df), 6),
+            "roc_auc": round(float(auc_eval.evaluate(pred_df)), 6),
+            "f1": round(float(f1_eval.evaluate(pred_df)), 6),
+            "precision": round(float(prec_eval.evaluate(pred_df)), 6),
+            "recall": round(float(rec_eval.evaluate(pred_df)), 6),
         }
 
-    val_metrics = _eval(df_val_pred)
-    test_metrics = _eval(df_test_pred)
-    logger.info("[Spark ML] Churn Risk — VAL: %s | TEST: %s", val_metrics, test_metrics)
+    # ── Candidate Model Competition ───────────────────────────────────────────
+    candidates_config = [
+        {
+            "name": "LogisticRegression",
+            "model": LogisticRegression(
+                featuresCol="features", labelCol=TARGET_COL, maxIter=50, regParam=0.01
+            ),
+            "hyperparameters": {"maxIter": 50, "regParam": 0.01},
+        },
+        {
+            "name": "RandomForestClassifier",
+            "model": RandomForestClassifier(
+                featuresCol="features", labelCol=TARGET_COL, numTrees=20, maxDepth=5, seed=42
+            ),
+            "hyperparameters": {"numTrees": 20, "maxDepth": 5, "seed": 42},
+        },
+        {
+            "name": "GBTClassifier",
+            "model": GBTClassifier(
+                featuresCol="features",
+                labelCol=TARGET_COL,
+                maxIter=30,
+                maxDepth=4,
+                stepSize=0.1,
+                seed=42,
+            ),
+            "hyperparameters": {"maxIter": 30, "maxDepth": 4, "stepSize": 0.1, "seed": 42},
+        },
+    ]
 
-    prob_udf = F.udf(lambda v: float(v[1]), "double")
+    candidates_meta: list[dict[str, Any]] = []
+    trained_candidates = []
+
+    logger.info(
+        "[Spark ML] Evaluating %d candidate classification algorithms for churn...",
+        len(candidates_config),
+    )
+    for c in candidates_config:
+        t_c = time.time()
+        logger.info("[Spark ML] Training churn candidate: %s...", c["name"])
+        fitted_model = c["model"].fit(train_prep)
+        duration_c = round(time.time() - t_c, 2)
+
+        val_pred = fitted_model.transform(val_prep)
+        val_m = _eval(val_pred)
+        logger.info(
+            "[Spark ML] Candidate %s — Validation: ROC-AUC=%.4f, F1=%.4f (%.2fs)",
+            c["name"],
+            val_m["roc_auc"],
+            val_m["f1"],
+            duration_c,
+        )
+
+        c_meta = {
+            "algorithm": c["name"],
+            "hyperparameters": c["hyperparameters"],
+            "validation_metrics": val_m,
+            "training_duration_sec": duration_c,
+        }
+        candidates_meta.append(c_meta)
+        trained_candidates.append(
+            {
+                "name": c["name"],
+                "model": fitted_model,
+                "meta": c_meta,
+                "roc_auc_val": val_m["roc_auc"],
+                "f1_val": val_m["f1"],
+            }
+        )
+
+    # ── Champion Selection (VALIDATION only: highest ROC-AUC, F1 tie-breaker) ─
+    ranked_candidates = sorted(trained_candidates, key=lambda x: (-x["roc_auc_val"], -x["f1_val"]))
+    champion = ranked_candidates[0]
+    logger.info(
+        "[Spark ML] Champion selected for churn: %s (Validation ROC-AUC=%.4f, F1=%.4f)",
+        champion["name"],
+        champion["roc_auc_val"],
+        champion["f1_val"],
+    )
+
+    # ── Out-of-sample Test Evaluation on Champion Only ─────────────────────────
+    test_pred = champion["model"].transform(test_prep)
+    test_metrics = _eval(test_pred)
+    logger.info("[Spark ML] Champion %s Test: %s", champion["name"], test_metrics)
+
+    prob_udf = F.udf(lambda v: float(v[1]) if v is not None and len(v) > 1 else 0.0, "double")
 
     # Determine available date column for split labelling
     date_col = "last_order_date" if "last_order_date" in df.columns else None
@@ -181,17 +262,22 @@ def train_churn_risk(
             )
         return F.lit("TRAIN")
 
-    df_all_pred = model.transform(df).select(
-        "customer_id",
-        F.col(TARGET_COL).alias("actual_label"),
-        F.col("prediction").cast("integer").alias("predicted_label"),
-        F.round(prob_udf(F.col("probability")), 4).alias("churn_probability"),
-        "recency_days",
-        "frequency",
-        "monetary_total",
-        "rfm_score",
-        _split_label(date_col).alias("split"),
-        F.lit("spark").alias("pipeline"),
+    full_prep = prep_model.transform(df)
+    df_all_pred = (
+        champion["model"]
+        .transform(full_prep)
+        .select(
+            "customer_id",
+            F.col(TARGET_COL).alias("actual_label"),
+            F.col("prediction").cast("integer").alias("predicted_label"),
+            F.round(prob_udf(F.col("probability")), 4).alias("churn_probability"),
+            "recency_days",
+            "frequency",
+            "monetary_total",
+            "rfm_score",
+            _split_label(date_col).alias("split"),
+            F.lit("spark").alias("pipeline"),
+        )
     )
 
     out_path = output_dir / "ml_churn_risk.parquet"
@@ -206,19 +292,32 @@ def train_churn_risk(
     total_rows = df_all_pred.count()
     logger.info("[Spark ML] Materialised ml_churn_risk.parquet: %d rows", total_rows)
 
+    # Clean up persisted DataFrames
+    train_prep.unpersist()
+    val_prep.unpersist()
+    test_prep.unpersist()
+
     duration = round(time.time() - t_start, 2)
     metadata: dict[str, Any] = {
         "pipeline": "spark",
         "task": "churn_risk",
-        "algorithm": "GBTClassifier",
+        "selected_algorithm": champion["name"],
+        "algorithm": champion["name"],
+        "selection_criteria": "validation_roc_auc (higher is better, F1 tie-breaker)",
+        "selection_reason": (
+            f"Highest validation ROC-AUC ({champion['roc_auc_val']:.6f}) among "
+            f"{len(candidates_config)} evaluated Spark MLlib candidates"
+        ),
+        "candidates": candidates_meta,
         "churn_definition_days": CHURN_DAYS,
         "feature_cols": FEATURE_COLS,
         "target_col": TARGET_COL,
         "rows_train": rows_train,
         "rows_validation": rows_val,
         "rows_test": rows_test,
-        "metrics": {"validation": val_metrics, "test": test_metrics},
+        "metrics": {"validation": champion["meta"]["validation_metrics"], "test": test_metrics},
         "duration_sec": duration,
+        "model_version": "v2.0-phase6b",
     }
     meta_path = artifact_dir / "spark_churn_risk_metadata.json"
     meta_path.write_text(json.dumps(metadata, indent=2))

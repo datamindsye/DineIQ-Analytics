@@ -31,6 +31,15 @@ alembic upgrade head
 # Spark analytical pipeline execution (materializes 12 marts)
 python -m packages.pipeline_spark.runner
 
+# Phase 4 Independent Python ML pipeline (materializes 4 prediction marts)
+python -m packages.pipeline_python.runner
+
+# Phase 4 Spark MLlib pipeline (materializes 4 prediction marts)
+python -m packages.pipeline_spark.ml_runner
+
+# Phase 4 Cross-pipeline comparison evaluator (materializes comparison marts & summary)
+python -m packages.comparison.evaluator
+
 # Dataset generation (benchmark)
 python -m packages.common.generator.cli --profile competition --snapshot-id competition_benchmark_v1
 
@@ -78,17 +87,14 @@ cd apps/web && npx oxlint
 - Feature engineering across 12 analytical domains
 - 12 precomputed Spark analytical marts materialized in `data/marts/spark/*.parquet` (741,310 total records)
 - Sales anomaly anti-leakage correction (`rowsBetween(-14, -1)` excluding day $t$)
-- Comprehensive automated regression tests (108 passed out of 108 tests)
+- Comprehensive automated regression tests (183 passed out of 183 tests)
 - Static analysis pass with Ruff (0 errors)
+- Independent Python scikit-learn ML pipeline with multi-algorithm tournament (Ridge, RF, GBR; LogReg, RF, GBC; KMeans, GaussianMixture)
+- Apache Spark MLlib ML pipeline with multi-algorithm tournament (LinearRegression, RF, GBT; LogisticRegression, RF, GBT; KMeans, BisectingKMeans)
+- Cross-pipeline comparison engine & evaluation contracts (63.48% overall agreement in Phase 6B tournament, head-to-head scorecard)
+- Phase 6B prediction and comparison marts materialized in `data/marts/python/`, `data/marts/spark/ml_*`, and `data/marts/comparison/`
 
 ### Not Completed Yet
-- Spark MLlib model training (demand forecasting, wastage risk, churn)
-- Independent Python scikit-learn model training
-- Model evaluation and performance scoring
-- Spark vs Python cross-pipeline comparison engine
-- Final demand forecasting predictions
-- Wastage prediction ML model
-- Customer churn risk ML model
 - Recommendation and decision intelligence engine
 - What-if scenario analysis engine
 - Final FastAPI analytical query endpoints
@@ -120,3 +126,4 @@ cd apps/web && npx oxlint
 - [packages/pipeline_python/AGENTS.md](packages/pipeline_python/AGENTS.md): Independent Python data science rules
 - [packages/comparison/AGENTS.md](packages/comparison/AGENTS.md): Cross pipeline evaluation and contract rules
 - [docs/specs/0005-spark-analytical-pipeline-and-marts/index.md](docs/specs/0005-spark-analytical-pipeline-and-marts/index.md): Phase 3 Spark analytical pipeline specification
+- [docs/specs/0006-multi-model-competition-and-selection/index.md](docs/specs/0006-multi-model-competition-and-selection/index.md): Phase 6B Multi-Algorithm Model Competition and Champion Selection specification

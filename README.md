@@ -369,7 +369,25 @@ python -m packages.common.quality.cli --snapshot-dir data/snapshots/competition_
 python -m packages.pipeline_spark.runner
 ```
 
-### 7. Run FastAPI Backend Server
+### 7. Execute Phase 4 Machine Learning Pipelines & Comparison
+```bash
+# A. Independent Python scikit-learn ML pipeline
+# Trains Demand (GBR), Wastage (GBC), Churn (GBC), and Customer Segmentation (KMeans)
+# Outputs: data/marts/python/*.parquet and data/artifacts/python_*_metadata.json
+python -m packages.pipeline_python.runner
+
+# B. Apache Spark MLlib ML pipeline
+# Trains distributed GBTRegressor, GBTClassifier, and KMeans models
+# Outputs: data/marts/spark/ml_*.parquet and data/artifacts/spark_*_metadata.json
+python -m packages.pipeline_spark.ml_runner
+
+# C. Cross-Pipeline Comparison Evaluator
+# Ingests predictions from both pipelines, computes consensus agreement (63.48% in Phase 6B Multi-Algorithm Tournament),
+# outputs: data/marts/comparison/*.parquet and data/marts/comparison/comparison_overall_summary.json
+python -m packages.comparison.evaluator
+```
+
+### 8. Run FastAPI Backend Server
 ```bash
 # Start backend API (serves 14 analytical endpoints + operational endpoints)
 uvicorn apps.api.main:app --reload --host 0.0.0.0 --port 8000
@@ -378,7 +396,7 @@ uvicorn apps.api.main:app --reload --host 0.0.0.0 --port 8000
 - Health Probe: [http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health)
 - Executive KPI Endpoint: [http://localhost:8000/api/v1/analytics/executive-summary](http://localhost:8000/api/v1/analytics/executive-summary)
 
-### 8. Run React Frontend Development Server & Build
+### 9. Run React Frontend Development Server & Build
 ```bash
 cd apps/web
 
