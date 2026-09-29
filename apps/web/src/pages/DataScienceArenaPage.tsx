@@ -79,25 +79,15 @@ export const DataScienceArenaPage: React.FC = () => {
                 ? `${overview.demand_forecast.agreement_pct}%`
                 : '—'}
             </div>
-<<<<<<< HEAD
-            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
-              Spark ({overview?.demand_forecast?.spark_selected_algorithm || 'MLlib'}) RMSE: {overview?.demand_forecast?.metrics_comparison?.spark?.rmse?.toFixed(2) || '—'} vs Python ({overview?.demand_forecast?.python_selected_algorithm || 'Sklearn'}) RMSE: {overview?.demand_forecast?.metrics_comparison?.python?.rmse?.toFixed(2) || '—'}
-=======
             <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '4px', lineHeight: 1.4 }}>
               Spark ({overview?.demand_forecast?.spark_selected_algorithm || 'GBTRegressor'}) RMSE: {overview?.demand_forecast?.metrics_comparison?.spark?.rmse?.toFixed(2) || '—'}<br />
               Python ({overview?.demand_forecast?.python_selected_algorithm || 'GradientBoosting'}) RMSE: {overview?.demand_forecast?.metrics_comparison?.python?.rmse?.toFixed(2) || '—'}
->>>>>>> be10b32 (chore: prepare final competition repository)
             </div>
             <div style={{ marginTop: '8px' }}>
               <span className="badge-tag badge-profit">
                 Winner: {overview?.demand_forecast?.spark_wins
-<<<<<<< HEAD
-                  ? (overview?.demand_forecast?.spark_selected_algorithm ? `Spark (${overview.demand_forecast.spark_selected_algorithm})` : 'Spark MLlib')
-                  : (overview?.demand_forecast?.python_selected_algorithm ? `Python (${overview.demand_forecast.python_selected_algorithm})` : 'Python Sklearn')}
-=======
                   ? (overview?.demand_forecast?.spark_selected_algorithm ? `⚡ Spark (${overview.demand_forecast.spark_selected_algorithm})` : '⚡ Spark MLlib')
                   : (overview?.demand_forecast?.python_selected_algorithm ? `🐍 Python (${overview.demand_forecast.python_selected_algorithm})` : '🐍 Python Sklearn')}
->>>>>>> be10b32 (chore: prepare final competition repository)
               </span>
             </div>
           </div>
@@ -110,25 +100,15 @@ export const DataScienceArenaPage: React.FC = () => {
                 ? `${overview.wastage_risk.agreement_pct}%`
                 : '—'}
             </div>
-<<<<<<< HEAD
-            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
-              Spark ({overview?.wastage_risk?.spark_selected_algorithm || 'MLlib'}): {overview?.wastage_risk?.metrics_comparison?.spark?.accuracy ? `${(overview.wastage_risk.metrics_comparison.spark.accuracy * 100).toFixed(1)}%` : '—'} vs Python ({overview?.wastage_risk?.python_selected_algorithm || 'Sklearn'}): {overview?.wastage_risk?.metrics_comparison?.python?.accuracy ? `${(overview.wastage_risk.metrics_comparison.python.accuracy * 100).toFixed(1)}%` : '—'}
-=======
             <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '4px', lineHeight: 1.4 }}>
               Spark ({overview?.wastage_risk?.spark_selected_algorithm || 'LogisticRegression'}): {overview?.wastage_risk?.metrics_comparison?.spark?.accuracy ? `${(overview.wastage_risk.metrics_comparison.spark.accuracy * 100).toFixed(1)}%` : '—'}<br />
               Python ({overview?.wastage_risk?.python_selected_algorithm || 'LogisticRegression'}): {overview?.wastage_risk?.metrics_comparison?.python?.accuracy ? `${(overview.wastage_risk.metrics_comparison.python.accuracy * 100).toFixed(1)}%` : '—'}
->>>>>>> be10b32 (chore: prepare final competition repository)
             </div>
             <div style={{ marginTop: '8px' }}>
               <span className="badge-tag badge-profit">
                 Winner: {overview?.wastage_risk?.spark_wins
-<<<<<<< HEAD
-                  ? (overview?.wastage_risk?.spark_selected_algorithm ? `Spark (${overview.wastage_risk.spark_selected_algorithm})` : 'Spark MLlib')
-                  : (overview?.wastage_risk?.python_selected_algorithm ? `Python (${overview.wastage_risk.python_selected_algorithm})` : 'Python Sklearn')}
-=======
                   ? (overview?.wastage_risk?.spark_selected_algorithm ? `⚡ Spark (${overview.wastage_risk.spark_selected_algorithm})` : '⚡ Spark MLlib')
                   : (overview?.wastage_risk?.python_selected_algorithm ? `🐍 Python (${overview.wastage_risk.python_selected_algorithm})` : '🐍 Python Sklearn')}
->>>>>>> be10b32 (chore: prepare final competition repository)
               </span>
             </div>
           </div>
@@ -141,25 +121,15 @@ export const DataScienceArenaPage: React.FC = () => {
                 ? `${overview.churn_risk.agreement_pct}%`
                 : '—'}
             </div>
-<<<<<<< HEAD
-            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
-              Spark ({overview?.churn_risk?.spark_selected_algorithm || 'MLlib'}): {overview?.churn_risk?.metrics_comparison?.spark?.accuracy ? `${(overview.churn_risk.metrics_comparison.spark.accuracy * 100).toFixed(1)}%` : '—'} vs Python ({overview?.churn_risk?.python_selected_algorithm || 'Sklearn'}): {overview?.churn_risk?.metrics_comparison?.python?.accuracy ? `${(overview.churn_risk.metrics_comparison.python.accuracy * 100).toFixed(1)}%` : '—'}
-=======
             <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '4px', lineHeight: 1.4 }}>
               Spark ({overview?.churn_risk?.spark_selected_algorithm || 'LogisticRegression'}): {overview?.churn_risk?.metrics_comparison?.spark?.accuracy ? `${(overview.churn_risk.metrics_comparison.spark.accuracy * 100).toFixed(1)}%` : '—'}<br />
               Python ({overview?.churn_risk?.python_selected_algorithm || 'RandomForest'}): {overview?.churn_risk?.metrics_comparison?.python?.accuracy ? `${(overview.churn_risk.metrics_comparison.python.accuracy * 100).toFixed(1)}%` : '—'}
->>>>>>> be10b32 (chore: prepare final competition repository)
             </div>
             <div style={{ marginTop: '8px' }}>
               <span className="badge-tag badge-profit">
                 Winner: {overview?.churn_risk?.spark_wins
-<<<<<<< HEAD
-                  ? (overview?.churn_risk?.spark_selected_algorithm ? `Spark (${overview.churn_risk.spark_selected_algorithm})` : 'Spark MLlib')
-                  : (overview?.churn_risk?.python_selected_algorithm ? `Python (${overview.churn_risk.python_selected_algorithm})` : 'Python Sklearn')}
-=======
                   ? (overview?.churn_risk?.spark_selected_algorithm ? `⚡ Spark (${overview.churn_risk.spark_selected_algorithm})` : '⚡ Spark MLlib')
                   : (overview?.churn_risk?.python_selected_algorithm ? `🐍 Python (${overview.churn_risk.python_selected_algorithm})` : '🐍 Python Sklearn')}
->>>>>>> be10b32 (chore: prepare final competition repository)
               </span>
             </div>
           </div>
@@ -172,14 +142,9 @@ export const DataScienceArenaPage: React.FC = () => {
                 ? `${overview.customer_segmentation.agreement_pct}%`
                 : '—'}
             </div>
-<<<<<<< HEAD
-            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
-              Spark: {overview?.customer_segmentation?.spark_selected_algorithm || 'BisectingKMeans'} vs Python: {overview?.customer_segmentation?.python_selected_algorithm || 'KMeans'}
-=======
             <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '4px', lineHeight: 1.4 }}>
               Spark: {overview?.customer_segmentation?.spark_selected_algorithm || 'BisectingKMeans'}<br />
               Python: {overview?.customer_segmentation?.python_selected_algorithm || 'KMeans'}
->>>>>>> be10b32 (chore: prepare final competition repository)
             </div>
             <div style={{ marginTop: '8px' }}>
               <span className="badge-tag badge-volume">

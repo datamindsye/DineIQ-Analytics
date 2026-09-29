@@ -56,11 +56,7 @@ export const DemandPricingPage: React.FC = () => {
       type: 'scatter',
       mode: 'lines+markers',
       name: 'Actual Sold Quantity',
-<<<<<<< HEAD
-      line: { color: '#38bdf8', width: 2 },
-=======
       line: { color: '#38bdf8', width: 2.5 },
->>>>>>> be10b32 (chore: prepare final competition repository)
     },
   ];
 
@@ -70,11 +66,7 @@ export const DemandPricingPage: React.FC = () => {
       y: sparkCurve.map((c) => c.predicted_quantity),
       type: 'scatter',
       mode: 'lines',
-<<<<<<< HEAD
-      name: `Spark MLlib (${sparkAlgo})`,
-=======
       name: `⚡ Spark MLlib (${sparkAlgo})`,
->>>>>>> be10b32 (chore: prepare final competition repository)
       line: { color: '#10b981', dash: 'dash', width: 2 },
     });
   }
@@ -85,11 +77,7 @@ export const DemandPricingPage: React.FC = () => {
       y: pythonCurve.map((c) => c.predicted_quantity),
       type: 'scatter',
       mode: 'lines',
-<<<<<<< HEAD
-      name: `Python Sklearn (${pythonAlgo})`,
-=======
       name: `🐍 Python Sklearn (${pythonAlgo})`,
->>>>>>> be10b32 (chore: prepare final competition repository)
       line: { color: '#f59e0b', dash: 'dot', width: 2 },
     });
   }
@@ -193,21 +181,13 @@ export const DemandPricingPage: React.FC = () => {
               className={`tab-btn ${pipelineView === 'spark' ? 'active' : ''}`}
               onClick={() => setPipelineView('spark')}
             >
-<<<<<<< HEAD
-              Spark ({sparkAlgo})
-=======
               ⚡ Spark ({sparkAlgo})
->>>>>>> be10b32 (chore: prepare final competition repository)
             </button>
             <button
               className={`tab-btn ${pipelineView === 'python' ? 'active' : ''}`}
               onClick={() => setPipelineView('python')}
             >
-<<<<<<< HEAD
-              Python ({pythonAlgo})
-=======
               🐍 Python ({pythonAlgo})
->>>>>>> be10b32 (chore: prepare final competition repository)
             </button>
           </div>
         </div>

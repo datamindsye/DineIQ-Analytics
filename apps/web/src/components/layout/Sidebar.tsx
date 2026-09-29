@@ -1,19 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
-<<<<<<< HEAD
-
-export const Sidebar: React.FC = () => {
-  const { hasRole, role } = useAuth();
-
-  const canViewExecutive = hasRole('Admin', 'StoreManager', 'DataScientist');
-  const canViewOperationalBI = hasRole('Admin', 'StoreManager', 'DataScientist');
-  const canViewArena = hasRole('Admin', 'DataScientist');
-  const canViewScenarios = hasRole('Admin', 'StoreManager', 'DataScientist');
-
-  return (
-    <aside className="app-sidebar">
-=======
 
 export interface SidebarProps {
   isOpen?: boolean;
@@ -42,7 +29,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
         </button>
       </div>
 
->>>>>>> be10b32 (chore: prepare final competition repository)
       <nav className="sidebar-nav">
         {canViewExecutive && (
           <>
@@ -50,10 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
             <NavLink
               to="/"
               end
-<<<<<<< HEAD
-=======
               onClick={onClose}
->>>>>>> be10b32 (chore: prepare final competition repository)
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
             >
               <span className="nav-icon">📊</span>
@@ -63,6 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
         )}
 
         <div className="nav-group-label">BUSINESS INTELLIGENCE</div>
+
         <NavLink
           to="/menu"
           onClick={onClose}
@@ -76,10 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
           <>
             <NavLink
               to="/customers"
-<<<<<<< HEAD
-=======
               onClick={onClose}
->>>>>>> be10b32 (chore: prepare final competition repository)
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
             >
               <span className="nav-icon">👥</span>
@@ -88,10 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
 
             <NavLink
               to="/sales"
-<<<<<<< HEAD
-=======
               onClick={onClose}
->>>>>>> be10b32 (chore: prepare final competition repository)
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
             >
               <span className="nav-icon">🏪</span>
@@ -100,10 +78,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
 
             <NavLink
               to="/demand-pricing"
-<<<<<<< HEAD
-=======
               onClick={onClose}
->>>>>>> be10b32 (chore: prepare final competition repository)
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
             >
               <span className="nav-icon">📈</span>
@@ -112,10 +87,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
 
             <NavLink
               to="/wastage"
-<<<<<<< HEAD
-=======
               onClick={onClose}
->>>>>>> be10b32 (chore: prepare final competition repository)
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
             >
               <span className="nav-icon">🗑️</span>
@@ -124,10 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
 
             <NavLink
               to="/promotions"
-<<<<<<< HEAD
-=======
               onClick={onClose}
->>>>>>> be10b32 (chore: prepare final competition repository)
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
             >
               <span className="nav-icon">🏷️</span>
@@ -136,10 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
 
             <NavLink
               to="/anomalies"
-<<<<<<< HEAD
-=======
               onClick={onClose}
->>>>>>> be10b32 (chore: prepare final competition repository)
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
             >
               <span className="nav-icon">⚠️</span>
@@ -151,13 +117,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
         {(canViewArena || canViewScenarios) && (
           <>
             <div className="nav-group-label">INTELLIGENCE & SCENARIOS</div>
+
             {canViewArena && (
               <NavLink
                 to="/arena"
-<<<<<<< HEAD
-=======
                 onClick={onClose}
->>>>>>> be10b32 (chore: prepare final competition repository)
                 className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
               >
                 <span className="nav-icon">⚔️</span>
@@ -169,10 +133,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
               <>
                 <NavLink
                   to="/recommendations"
-<<<<<<< HEAD
-=======
                   onClick={onClose}
->>>>>>> be10b32 (chore: prepare final competition repository)
                   className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                 >
                   <span className="nav-icon">💡</span>
@@ -181,10 +142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
 
                 <NavLink
                   to="/what-if"
-<<<<<<< HEAD
-=======
                   onClick={onClose}
->>>>>>> be10b32 (chore: prepare final competition repository)
                   className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                 >
                   <span className="nav-icon">🎛️</span>
@@ -196,6 +154,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
         )}
 
         <div className="nav-group-label">INFRASTRUCTURE</div>
+
         <NavLink
           to="/health"
           onClick={onClose}

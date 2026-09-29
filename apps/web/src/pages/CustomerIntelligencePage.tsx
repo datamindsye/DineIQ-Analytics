@@ -165,16 +165,12 @@ export const CustomerIntelligencePage: React.FC = () => {
 
       <div className="card chart-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
-<<<<<<< HEAD
-          <h2 className="card-title" style={{ margin: 0 }}>Customer Portfolio Share</h2>
-=======
-          <div>
-            <h2 className="card-title" style={{ margin: 0 }}>Customer Portfolio Share</h2>
-            <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
-              Compare heuristic RFM scoring vs ML unsupervised spatial clustering.
-            </p>
-          </div>
->>>>>>> be10b32 (chore: prepare final competition repository)
+<div>
+  <h2 className="card-title" style={{ margin: 0 }}>Customer Portfolio Share</h2>
+  <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+    Compare heuristic RFM scoring vs ML unsupervised spatial clustering.
+  </p>
+</div>
           <div className="tab-group" style={{ margin: 0 }}>
             <button
               className={`tab-btn ${segmentView === 'rfm' ? 'active' : ''}`}
@@ -226,49 +222,34 @@ export const CustomerIntelligencePage: React.FC = () => {
             <thead>
               <tr>
                 <th>Customer</th>
-                <th>City</th>
-                <th>Loyalty Tier</th>
-                <th>Preferred Channel</th>
-<<<<<<< HEAD
-                <th>Orders</th>
-                <th>Total Spent</th>
-                <th>Recency</th>
-                <th>RFM Segment (Rule)</th>
-                <th>ML Cluster Segment</th>
-                <th>ML Churn Risk</th>
-=======
-                <th className="text-right">Orders</th>
-                <th className="text-right">Total Spent</th>
-                <th className="text-right">Recency</th>
-                <th>RFM Segment</th>
-                <th>ML Cluster</th>
-                <th className="text-right">ML Churn Risk</th>
->>>>>>> be10b32 (chore: prepare final competition repository)
+<th>City</th>
+<th>Loyalty Tier</th>
+<th>Preferred Channel</th>
+<th className="text-right">Orders</th>
+<th className="text-right">Total Spent</th>
+<th className="text-right">Recency</th>
+<th>RFM Segment (Rule)</th>
+<th>ML Cluster Segment</th>
+<th className="text-right">ML Churn Risk</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-<<<<<<< HEAD
-                <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', padding: '30px' }}>Loading customers...</td>
-                </tr>
-=======
-                Array.from({ length: 10 }).map((_, idx) => (
-                  <tr key={`skel-cust-${idx}`}>
-                    <td><div className="skeleton skeleton-text" style={{ width: '120px' }} /></td>
-                    <td><div className="skeleton skeleton-text" style={{ width: '60px' }} /></td>
-                    <td><div className="skeleton skeleton-text" style={{ width: '70px' }} /></td>
-                    <td><div className="skeleton skeleton-text" style={{ width: '60px' }} /></td>
-                    <td className="text-right"><div className="skeleton skeleton-text" style={{ width: '35px', marginLeft: 'auto' }} /></td>
-                    <td className="text-right"><div className="skeleton skeleton-text" style={{ width: '55px', marginLeft: 'auto' }} /></td>
-                    <td className="text-right"><div className="skeleton skeleton-text" style={{ width: '60px', marginLeft: 'auto' }} /></td>
-                    <td><div className="skeleton skeleton-text" style={{ width: '80px' }} /></td>
-                    <td><div className="skeleton skeleton-text" style={{ width: '80px' }} /></td>
-                    <td className="text-right"><div className="skeleton skeleton-text" style={{ width: '70px', marginLeft: 'auto' }} /></td>
-                  </tr>
-                ))
->>>>>>> be10b32 (chore: prepare final competition repository)
-              ) : data?.customers.map((c) => (
+  Array.from({ length: 10 }).map((_, idx) => (
+    <tr key={`skel-cust-${idx}`}>
+      <td><div className="skeleton skeleton-text" style={{ width: '120px' }} /></td>
+      <td><div className="skeleton skeleton-text" style={{ width: '60px' }} /></td>
+      <td><div className="skeleton skeleton-text" style={{ width: '70px' }} /></td>
+      <td><div className="skeleton skeleton-text" style={{ width: '60px' }} /></td>
+      <td className="text-right"><div className="skeleton skeleton-text" style={{ width: '35px', marginLeft: 'auto' }} /></td>
+      <td className="text-right"><div className="skeleton skeleton-text" style={{ width: '55px', marginLeft: 'auto' }} /></td>
+      <td className="text-right"><div className="skeleton skeleton-text" style={{ width: '60px', marginLeft: 'auto' }} /></td>
+      <td><div className="skeleton skeleton-text" style={{ width: '80px' }} /></td>
+      <td><div className="skeleton skeleton-text" style={{ width: '80px' }} /></td>
+      <td className="text-right"><div className="skeleton skeleton-text" style={{ width: '70px', marginLeft: 'auto' }} /></td>
+    </tr>
+  ))
+) : data?.customers.map((c) => (
                 <tr key={c.customer_id}>
                   <td>
                     <div style={{ fontWeight: 600, color: '#f8fafc' }}>{c.customer_name}</div>
@@ -311,11 +292,8 @@ export const CustomerIntelligencePage: React.FC = () => {
                       <span style={{ color: '#64748b' }}>Unclustered</span>
                     )}
                   </td>
-<<<<<<< HEAD
-                  <td>
-=======
-                  <td className="text-right">
->>>>>>> be10b32 (chore: prepare final competition repository)
+<td className="text-right">
+
                     {c.churn_probability !== undefined && c.churn_probability !== null ? (
                       <span
                         className={`badge-tag ${
