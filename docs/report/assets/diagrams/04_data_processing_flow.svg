@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 420" width="100%" height="100%" style="background:#0f172a; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <text x="500" y="32" text-anchor="middle" fill="#f8fafc" font-size="18" font-weight="700">DineIQ Analytics — Data Processing &amp; Quality Quarantine Flow</text>
+  <text x="500" y="52" text-anchor="middle" fill="#94a3b8" font-size="11.5">Strict Conservation of Record Counts: Raw = Cleaned + Quarantined</text>
+
+  <g transform="translate(50, 80)">
+    <rect x="0" y="0" width="180" height="120" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+    <text x="90" y="30" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="700">Raw Synthetic Data</text>
+    <text x="90" y="55" text-anchor="middle" fill="#f1f5f9" font-size="15" font-weight="700">1,311,264 Rows</text>
+    <text x="90" y="78" text-anchor="middle" fill="#94a3b8" font-size="10">11 Relational Tables</text>
+    <text x="90" y="98" text-anchor="middle" fill="#64748b" font-size="9">Contains 17 injected complexities</text>
+  </g>
+
+  <!-- Flow Arrow -->
+  <path d="M 230 140 L 310 140" stroke="#38bdf8" stroke-width="2.5"/>
+
+  <!-- Decision Box -->
+  <g transform="translate(310, 80)">
+    <rect x="0" y="0" width="220" height="120" rx="8" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="110" y="28" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="700">Data Quality Engine</text>
+    <text x="110" y="48" text-anchor="middle" fill="#94a3b8" font-size="10">packages/common/quality</text>
+    <text x="15" y="70" fill="#cbd5e1" font-size="9.5">• Schema &amp; Type Verification</text>
+    <text x="15" y="85" fill="#cbd5e1" font-size="9.5">• Foreign Key Referential Integrity</text>
+    <text x="15" y="100" fill="#cbd5e1" font-size="9.5">• Financial Formula Checking</text>
+    <text x="15" y="114" fill="#cbd5e1" font-size="9.5">• Chronological Monotonicity</text>
+  </g>
+
+  <!-- Two branches -->
+  <path d="M 530 115 L 610 80" stroke="#10b981" stroke-width="2"/>
+  <path d="M 530 165 L 610 200" stroke="#ef4444" stroke-width="2"/>
+
+  <!-- Clean Output -->
+  <g transform="translate(610, 30)">
+    <rect x="0" y="0" width="340" height="100" rx="8" fill="#064e3b" stroke="#10b981" stroke-width="1.5"/>
+    <text x="20" y="28" fill="#34d399" font-size="13" font-weight="700">PASS: Cleaned Data Snapshots</text>
+    <text x="20" y="52" fill="#ffffff" font-size="15" font-weight="700">1,302,220 Records (99.31%)</text>
+    <text x="20" y="72" fill="#a7f3d0" font-size="10.5">• Materialized to data/cleaned/*.parquet (Snappy compressed)</text>
+    <text x="20" y="88" fill="#a7f3d0" font-size="10.5">• Ingested directly into Apache Spark &amp; Python pipelines</text>
+  </g>
+
+  <!-- Quarantine Output -->
+  <g transform="translate(610, 150)">
+    <rect x="0" y="0" width="340" height="100" rx="8" fill="#7f1d1d" stroke="#ef4444" stroke-width="1.5"/>
+    <text x="20" y="28" fill="#f87171" font-size="13" font-weight="700">FAIL: Defect Quarantine Isolation</text>
+    <text x="20" y="52" fill="#ffffff" font-size="15" font-weight="700">9,044 Records (0.69%)</text>
+    <text x="20" y="72" fill="#fecaca" font-size="10.5">• Materialized to data/quarantine/*.parquet</text>
+    <text x="20" y="88" fill="#fecaca" font-size="10.5">• Annotated with quarantine_reason and defect timestamp</text>
+  </g>
+
+  <!-- Ingestion into marts -->
+  <path d="M 780 130 L 780 280" stroke="#10b981" stroke-width="2"/>
+  <g transform="translate(310, 280)">
+    <rect x="0" y="0" width="640" height="110" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+    <text x="20" y="26" fill="#38bdf8" font-size="12" font-weight="700">Downstream Consumption (Clean Data Only):</text>
+    <text x="20" y="48" fill="#cbd5e1" font-size="10">• Apache Spark joins across all 11 clean business tables to create 12 precomputed analytical marts</text>
+    <text x="20" y="66" fill="#cbd5e1" font-size="10">• Temporal anti-leakage rolling windows strictly exclude current day t: rowsBetween(-14, -1)</text>
+    <text x="20" y="84" fill="#cbd5e1" font-size="10">• Fast embedded PyArrow scanners query parquet analytical marts directly for REST endpoints</text>
+    <text x="20" y="100" fill="#10b981" font-size="10" font-weight="600">Zero raw or quarantined defects leak into analytical results or ML model training.</text>
+  </g>
+</svg>

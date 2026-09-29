@@ -56,7 +56,11 @@ export const DemandPricingPage: React.FC = () => {
       type: 'scatter',
       mode: 'lines+markers',
       name: 'Actual Sold Quantity',
+<<<<<<< HEAD
       line: { color: '#38bdf8', width: 2 },
+=======
+      line: { color: '#38bdf8', width: 2.5 },
+>>>>>>> be10b32 (chore: prepare final competition repository)
     },
   ];
 
@@ -66,7 +70,11 @@ export const DemandPricingPage: React.FC = () => {
       y: sparkCurve.map((c) => c.predicted_quantity),
       type: 'scatter',
       mode: 'lines',
+<<<<<<< HEAD
       name: `Spark MLlib (${sparkAlgo})`,
+=======
+      name: `⚡ Spark MLlib (${sparkAlgo})`,
+>>>>>>> be10b32 (chore: prepare final competition repository)
       line: { color: '#10b981', dash: 'dash', width: 2 },
     });
   }
@@ -77,7 +85,11 @@ export const DemandPricingPage: React.FC = () => {
       y: pythonCurve.map((c) => c.predicted_quantity),
       type: 'scatter',
       mode: 'lines',
+<<<<<<< HEAD
       name: `Python Sklearn (${pythonAlgo})`,
+=======
+      name: `🐍 Python Sklearn (${pythonAlgo})`,
+>>>>>>> be10b32 (chore: prepare final competition repository)
       line: { color: '#f59e0b', dash: 'dot', width: 2 },
     });
   }
@@ -119,6 +131,7 @@ export const DemandPricingPage: React.FC = () => {
   return (
     <div className="page-container">
       <div className="page-header">
+        <span className="page-eyebrow">Predictive Modeling & Microeconomics</span>
         <h1 className="page-title">Demand Forecasting & Price Elasticity</h1>
         <p className="page-description">
           Dual-pipeline ML demand trajectories ({sparkAlgo} vs {pythonAlgo}) and empirical price elasticity estimates.
@@ -126,6 +139,30 @@ export const DemandPricingPage: React.FC = () => {
       </div>
 
       {error && <div className="alert-box error">{error}</div>}
+
+      {/* Dual Pipeline Champions Overview Cards */}
+      <div className="metrics-grid" style={{ marginBottom: '24px' }}>
+        <div className="metric-card" style={{ borderLeft: '4px solid #10b981' }}>
+          <div className="metric-label">⚡ Spark MLlib Champion</div>
+          <div className="metric-value" style={{ fontSize: '1.25rem' }}>{sparkAlgo}</div>
+          <div className="metric-sub">Distributed regression tournament winner</div>
+        </div>
+        <div className="metric-card" style={{ borderLeft: '4px solid #f59e0b' }}>
+          <div className="metric-label">🐍 Python Sklearn Champion</div>
+          <div className="metric-value" style={{ fontSize: '1.25rem' }}>{pythonAlgo}</div>
+          <div className="metric-sub">Scikit-learn tournament winner</div>
+        </div>
+        <div className="metric-card" style={{ borderLeft: '4px solid #38bdf8' }}>
+          <div className="metric-label">Forecast Evaluation Points</div>
+          <div className="metric-value">{sparkCurve.length} Weeks</div>
+          <div className="metric-sub">Chronological holdout series</div>
+        </div>
+        <div className="metric-card" style={{ borderLeft: '4px solid #818cf8' }}>
+          <div className="metric-label">Elasticity Observations</div>
+          <div className="metric-value">{data?.pricing_items?.length || 0} Items</div>
+          <div className="metric-sub">Empirical price adjustments recorded</div>
+        </div>
+      </div>
 
       <div className="filter-bar">
         <div className="filter-group">
@@ -156,13 +193,21 @@ export const DemandPricingPage: React.FC = () => {
               className={`tab-btn ${pipelineView === 'spark' ? 'active' : ''}`}
               onClick={() => setPipelineView('spark')}
             >
+<<<<<<< HEAD
               Spark ({sparkAlgo})
+=======
+              ⚡ Spark ({sparkAlgo})
+>>>>>>> be10b32 (chore: prepare final competition repository)
             </button>
             <button
               className={`tab-btn ${pipelineView === 'python' ? 'active' : ''}`}
               onClick={() => setPipelineView('python')}
             >
+<<<<<<< HEAD
               Python ({pythonAlgo})
+=======
+              🐍 Python ({pythonAlgo})
+>>>>>>> be10b32 (chore: prepare final competition repository)
             </button>
           </div>
         </div>
@@ -192,7 +237,7 @@ export const DemandPricingPage: React.FC = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', marginBottom: '24px' }}>
+      <div className="demand-pricing-grid">
         <div className="card chart-card">
           <PlotlyChart data={forecastData} layout={forecastLayout} />
         </div>
@@ -202,7 +247,7 @@ export const DemandPricingPage: React.FC = () => {
       </div>
 
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
           <div>
             <h2 className="card-title" style={{ margin: 0 }}>Price Elasticity Observations</h2>
             <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
@@ -217,31 +262,43 @@ export const DemandPricingPage: React.FC = () => {
               <tr>
                 <th>Item ID</th>
                 <th>Item Name</th>
-                <th>Current Price</th>
-                <th>Pre Price</th>
-                <th>Post Price</th>
-                <th>Pre Volume</th>
-                <th>Post Volume</th>
-                <th>Elasticity (ε)</th>
+                <th className="text-right">Current Price</th>
+                <th className="text-right">Pre Price</th>
+                <th className="text-right">Post Price</th>
+                <th className="text-right">Pre Volume</th>
+                <th className="text-right">Post Volume</th>
+                <th className="text-right">Elasticity (ε)</th>
                 <th>Sensitivity Class</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '30px' }}>Loading price elasticity...</td>
-                </tr>
+                Array.from({ length: 8 }).map((_, idx) => (
+                  <tr key={`skel-prc-${idx}`}>
+                    <td><div className="skeleton skeleton-text" style={{ width: '80px' }} /></td>
+                    <td><div className="skeleton skeleton-text" style={{ width: '130px' }} /></td>
+                    <td className="text-right"><div className="skeleton skeleton-text" style={{ width: '45px', marginLeft: 'auto' }} /></td>
+                    <td className="text-right"><div className="skeleton skeleton-text" style={{ width: '45px', marginLeft: 'auto' }} /></td>
+                    <td className="text-right"><div className="skeleton skeleton-text" style={{ width: '45px', marginLeft: 'auto' }} /></td>
+                    <td className="text-right"><div className="skeleton skeleton-text" style={{ width: '50px', marginLeft: 'auto' }} /></td>
+                    <td className="text-right"><div className="skeleton skeleton-text" style={{ width: '50px', marginLeft: 'auto' }} /></td>
+                    <td className="text-right"><div className="skeleton skeleton-text" style={{ width: '45px', marginLeft: 'auto' }} /></td>
+                    <td><div className="skeleton skeleton-text" style={{ width: '80px' }} /></td>
+                  </tr>
+                ))
               ) : data?.pricing_items.map((prc, idx) => (
                 <tr key={`${prc.source_menu_item_id}-${idx}`}>
-                  <td><code>{prc.source_menu_item_id}</code></td>
-                  <td><strong>{prc.item_name}</strong></td>
-                  <td>${Number(prc.base_price).toFixed(2)}</td>
-                  <td>${Number(prc.pre_price).toFixed(2)}</td>
-                  <td>${Number(prc.post_price).toFixed(2)}</td>
-                  <td>{Number(prc.pre_quantity).toLocaleString()}</td>
-                  <td>{Number(prc.post_quantity).toLocaleString()}</td>
-                  <td>
-                    <strong>{prc.elasticity !== null ? Number(prc.elasticity).toFixed(3) : 'N/A'}</strong>
+                  <td><span className="code-id">{prc.source_menu_item_id}</span></td>
+                  <td><strong style={{ color: '#f8fafc' }}>{prc.item_name}</strong></td>
+                  <td className="text-right">${Number(prc.base_price).toFixed(2)}</td>
+                  <td className="text-right" style={{ color: '#94a3b8' }}>${Number(prc.pre_price).toFixed(2)}</td>
+                  <td className="text-right">${Number(prc.post_price).toFixed(2)}</td>
+                  <td className="text-right" style={{ color: '#94a3b8' }}>{Number(prc.pre_quantity).toLocaleString()}</td>
+                  <td className="text-right">{Number(prc.post_quantity).toLocaleString()}</td>
+                  <td className="text-right">
+                    <strong style={{ color: prc.elasticity !== null && Number(prc.elasticity) < -1 ? '#f59e0b' : '#38bdf8' }}>
+                      {prc.elasticity !== null ? Number(prc.elasticity).toFixed(3) : 'N/A'}
+                    </strong>
                   </td>
                   <td>
                     <span

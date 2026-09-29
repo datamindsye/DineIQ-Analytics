@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 500" width="100%" height="100%" style="background:#0f172a; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <text x="550" y="35" text-anchor="middle" fill="#f8fafc" font-size="20" font-weight="700">DineIQ Analytics — End-to-End Analytical &amp; ML Data Pipeline</text>
+  <text x="550" y="58" text-anchor="middle" fill="#94a3b8" font-size="12">Synthetic Generator (17 Complexities) → Quality Profiler → Spark Marts → Dual ML → REST API → Plotly BI</text>
+
+  <!-- Step 1: Generator -->
+  <g transform="translate(40, 100)">
+    <rect x="0" y="0" width="180" height="320" rx="8" fill="#1e293b" stroke="#3b82f6" stroke-width="1.5"/>
+    <rect x="0" y="0" width="180" height="28" rx="4" fill="#1d4ed8"/>
+    <text x="90" y="19" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="700">1. SYNTHETIC GENERATION</text>
+    <text x="90" y="55" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="600">1.31M Raw Records</text>
+    <text x="15" y="85" fill="#cbd5e1" font-size="10">• 17 Business Complexities</text>
+    <text x="15" y="105" fill="#cbd5e1" font-size="10">• 365-Day Longitudinal</text>
+    <text x="15" y="125" fill="#cbd5e1" font-size="10">• 50,000 Customers</text>
+    <text x="15" y="145" fill="#cbd5e1" font-size="10">• 100,508 Orders</text>
+    <text x="15" y="165" fill="#cbd5e1" font-size="10">• 1,006,051 Order Items</text>
+    <text x="15" y="185" fill="#cbd5e1" font-size="10">• 50,000 Wastage Records</text>
+    <text x="15" y="205" fill="#cbd5e1" font-size="10">• 100,000 Ratings</text>
+    <text x="15" y="235" fill="#94a3b8" font-size="9.5">Realistic Defects:</text>
+    <text x="15" y="255" fill="#f87171" font-size="9">• Negative amounts / prices</text>
+    <text x="15" y="270" fill="#f87171" font-size="9">• Orphan item references</text>
+    <text x="15" y="285" fill="#f87171" font-size="9">• Out-of-bounds ratings</text>
+    <text x="15" y="300" fill="#f87171" font-size="9">• Chronological inversions</text>
+  </g>
+
+  <!-- Arrow 1 -->
+  <path d="M 225 260 L 255 260" stroke="#38bdf8" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- Step 2: Quality Engine -->
+  <g transform="translate(260, 100)">
+    <rect x="0" y="0" width="180" height="320" rx="8" fill="#1e293b" stroke="#10b981" stroke-width="1.5"/>
+    <rect x="0" y="0" width="180" height="28" rx="4" fill="#047857"/>
+    <text x="90" y="19" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="700">2. QUALITY &amp; CLEANING</text>
+    <text x="90" y="55" text-anchor="middle" fill="#34d399" font-size="12" font-weight="600">Forensic Profiling</text>
+    <text x="15" y="85" fill="#cbd5e1" font-size="10">• Defect Rule Isolation</text>
+    <text x="15" y="105" fill="#cbd5e1" font-size="10">• Referential Integrity</text>
+    <text x="15" y="125" fill="#cbd5e1" font-size="10">• Formula Invariants</text>
+    <text x="15" y="155" fill="#94a3b8" font-size="10" font-weight="600">Reconciliation Output:</text>
+    <rect x="10" y="170" width="160" height="45" rx="4" fill="#064e3b" stroke="#059669"/>
+    <text x="20" y="188" fill="#a7f3d0" font-size="10" font-weight="700">Cleaned: 1,302,220 (99.31%)</text>
+    <text x="20" y="204" fill="#a7f3d0" font-size="9">Exported to clean Parquet</text>
+
+    <rect x="10" y="225" width="160" height="45" rx="4" fill="#7f1d1d" stroke="#b91c1c"/>
+    <text x="20" y="243" fill="#fecaca" font-size="10" font-weight="700">Quarantine: 9,044 (0.69%)</text>
+    <text x="20" y="259" fill="#fecaca" font-size="9">Isolated with defect tags</text>
+
+    <text x="15" y="295" fill="#94a3b8" font-size="9.5">Exact Conservation:</text>
+    <text x="15" y="310" fill="#f1f5f9" font-size="9.5" font-weight="600">1,302,220 + 9,044 = 1,311,264</text>
+  </g>
+
+  <!-- Arrow 2 -->
+  <path d="M 445 260 L 475 260" stroke="#10b981" stroke-width="2.5"/>
+
+  <!-- Step 3: Spark Analytical Marts -->
+  <g transform="translate(480, 100)">
+    <rect x="0" y="0" width="180" height="320" rx="8" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5"/>
+    <rect x="0" y="0" width="180" height="28" rx="4" fill="#b45309"/>
+    <text x="90" y="19" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="700">3. SPARK PIPELINE</text>
+    <text x="90" y="55" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="600">12 Analytical Marts</text>
+    <text x="15" y="80" fill="#cbd5e1" font-size="9.5">1. Menu Performance</text>
+    <text x="15" y="98" fill="#cbd5e1" font-size="9.5">2. Customer RFM</text>
+    <text x="15" y="116" fill="#cbd5e1" font-size="9.5">3. Basket Association</text>
+    <text x="15" y="134" fill="#cbd5e1" font-size="9.5">4. Peak Rush Analysis</text>
+    <text x="15" y="152" fill="#cbd5e1" font-size="9.5">5. Location Performance</text>
+    <text x="15" y="170" fill="#cbd5e1" font-size="9.5">6. Channel Distribution</text>
+    <text x="15" y="188" fill="#cbd5e1" font-size="9.5">7. Wastage &amp; Spoilage</text>
+    <text x="15" y="206" fill="#cbd5e1" font-size="9.5">8. Pricing &amp; Elasticity</text>
+    <text x="15" y="224" fill="#cbd5e1" font-size="9.5">9. Promotion Uplift</text>
+    <text x="15" y="242" fill="#cbd5e1" font-size="9.5">10. Ratings &amp; Sentiments</text>
+    <text x="15" y="260" fill="#cbd5e1" font-size="9.5">11. Sales Anomalies</text>
+    <text x="15" y="278" fill="#cbd5e1" font-size="9.5">12. Demand Historical</text>
+    <text x="15" y="305" fill="#f59e0b" font-size="10" font-weight="600">Total: 741,310 Records</text>
+  </g>
+
+  <!-- Arrow 3 -->
+  <path d="M 665 260 L 695 260" stroke="#f59e0b" stroke-width="2.5"/>
+
+  <!-- Step 4: Dual ML Competition -->
+  <g transform="translate(700, 100)">
+    <rect x="0" y="0" width="180" height="320" rx="8" fill="#1e293b" stroke="#a855f7" stroke-width="1.5"/>
+    <rect x="0" y="0" width="180" height="28" rx="4" fill="#7e22ce"/>
+    <text x="90" y="19" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="700">4. DUAL ML ARENA</text>
+    <text x="90" y="55" text-anchor="middle" fill="#c084fc" font-size="12" font-weight="600">Model Tournament</text>
+    <text x="15" y="85" fill="#cbd5e1" font-size="10">• 4 Business Problems</text>
+    <text x="15" y="105" fill="#cbd5e1" font-size="10">• 3 Algorithms Per Task</text>
+    <text x="15" y="125" fill="#cbd5e1" font-size="10">• Chronological Splits</text>
+    <text x="15" y="145" fill="#cbd5e1" font-size="10">• Spark MLlib vs Python</text>
+    <rect x="10" y="170" width="160" height="60" rx="4" fill="#4c1d95" stroke="#7c3aed"/>
+    <text x="20" y="190" fill="#e9d5ff" font-size="10" font-weight="700">Cross-Pipeline Eval:</text>
+    <text x="20" y="206" fill="#e9d5ff" font-size="9.5">• 63.48% Agreement</text>
+    <text x="20" y="221" fill="#e9d5ff" font-size="9">• Unseen comparison set</text>
+
+    <text x="15" y="255" fill="#94a3b8" font-size="9.5">Prediction Marts:</text>
+    <text x="15" y="272" fill="#cbd5e1" font-size="9">ml_demand_forecast</text>
+    <text x="15" y="287" fill="#cbd5e1" font-size="9">ml_churn_risk</text>
+    <text x="15" y="302" fill="#cbd5e1" font-size="9">ml_customer_segmentation</text>
+  </g>
+
+  <!-- Arrow 4 -->
+  <path d="M 885 260 L 915 260" stroke="#a855f7" stroke-width="2.5"/>
+
+  <!-- Step 5: FastAPI & Dashboards -->
+  <g transform="translate(920, 100)">
+    <rect x="0" y="0" width="150" height="320" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+    <rect x="0" y="0" width="150" height="28" rx="4" fill="#0284c7"/>
+    <text x="75" y="19" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="700">5. SERVING &amp; BI</text>
+    <text x="75" y="55" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="600">Decision Support</text>
+    <text x="12" y="85" fill="#cbd5e1" font-size="10">• FastAPI Endpoints</text>
+    <text x="12" y="105" fill="#cbd5e1" font-size="10">• PyArrow Scans</text>
+    <text x="12" y="125" fill="#cbd5e1" font-size="10">• JWT &amp; 4-Role RBAC</text>
+    <text x="12" y="145" fill="#cbd5e1" font-size="10">• React 19 Frontend</text>
+    <text x="12" y="165" fill="#cbd5e1" font-size="10">• 12 Plotly Dashboards</text>
+    <text x="12" y="185" fill="#cbd5e1" font-size="10">• 7x24 Peak Heatmap</text>
+    <text x="12" y="205" fill="#cbd5e1" font-size="10">• What-If Simulator</text>
+    <text x="12" y="225" fill="#cbd5e1" font-size="10">• Action Recomms</text>
+    <rect x="10" y="250" width="130" height="55" rx="4" fill="#0f172a" stroke="#334155"/>
+    <text x="75" y="272" text-anchor="middle" fill="#10b981" font-size="10" font-weight="700">Sub-50ms API</text>
+    <text x="75" y="290" text-anchor="middle" fill="#94a3b8" font-size="9">198 Tests Passed</text>
+  </g>
+</svg>

@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 420" width="100%" height="100%" style="background:#0f172a; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <text x="500" y="32" text-anchor="middle" fill="#f8fafc" font-size="18" font-weight="700">DineIQ Analytics — Recommendation &amp; Decision Intelligence Flow</text>
+  <text x="500" y="52" text-anchor="middle" fill="#94a3b8" font-size="11.5">Rule-Based &amp; ML-Driven Prescriptive Insights • Zero External Generative AI Runtime</text>
+
+  <!-- Input Marts -->
+  <g transform="translate(40, 80)">
+    <rect x="0" y="0" width="220" height="300" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+    <text x="110" y="26" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="700">Analytical &amp; ML Inputs</text>
+    <text x="15" y="55" fill="#cbd5e1" font-size="10">• Menu BCG Classifications</text>
+    <text x="15" y="75" fill="#cbd5e1" font-size="10">• High Spoilage Wastage Items</text>
+    <text x="15" y="95" fill="#cbd5e1" font-size="10">• At-Risk Customer Churn</text>
+    <text x="15" y="115" fill="#cbd5e1" font-size="10">• Promotion ROI Uplifts</text>
+    <text x="15" y="135" fill="#cbd5e1" font-size="10">• Location Margin Disparities</text>
+    <text x="15" y="155" fill="#cbd5e1" font-size="10">• Demand Surge Forecasts</text>
+    <text x="15" y="175" fill="#cbd5e1" font-size="10">• Price Elasticity Estimates</text>
+    <rect x="15" y="200" width="190" height="85" rx="4" fill="#0f172a" stroke="#334155"/>
+    <text x="25" y="222" fill="#94a3b8" font-size="9.5" font-weight="600">Decision Engine Rule:</text>
+    <text x="25" y="240" fill="#f1f5f9" font-size="9">All intelligence is generated</text>
+    <text x="25" y="255" fill="#f1f5f9" font-size="9">deterministically from clean marts</text>
+    <text x="25" y="270" fill="#f1f5f9" font-size="9">with empirical confidence scores.</text>
+  </g>
+
+  <!-- Arrow -->
+  <path d="M 260 230 L 320 230" stroke="#38bdf8" stroke-width="2.5"/>
+
+  <!-- Decision Rules -->
+  <g transform="translate(320, 80)">
+    <rect x="0" y="0" width="360" height="300" rx="8" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="180" y="26" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="700">Prescriptive Heuristics &amp; Scenarios</text>
+    
+    <rect x="15" y="45" width="330" height="50" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="25" y="65" fill="#f1f5f9" font-size="10.5" font-weight="600">Menu Engineering Action</text>
+    <text x="25" y="82" fill="#94a3b8" font-size="9">Re-price or promote "Puzzles"; retire or re-engineer "Dogs"</text>
+
+    <rect x="15" y="105" width="330" height="50" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="25" y="125" fill="#f1f5f9" font-size="10.5" font-weight="600">Wastage Reduction Protocol</text>
+    <text x="25" y="142" fill="#94a3b8" font-size="9">Adjust batch prep levels when prep-waste &gt; 15% threshold</text>
+
+    <rect x="15" y="165" width="330" height="50" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="25" y="185" fill="#f1f5f9" font-size="10.5" font-weight="600">Retention Campaign Trigger</text>
+    <text x="25" y="202" fill="#94a3b8" font-size="9">Target "Can't Lose Them" customers with high churn risk</text>
+
+    <rect x="15" y="225" width="330" height="60" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="25" y="245" fill="#f1f5f9" font-size="10.5" font-weight="600">What-If Price Elasticity Simulator</text>
+    <text x="25" y="262" fill="#94a3b8" font-size="9">Simulate % price, discount, and waste changes with</text>
+    <text x="25" y="276" fill="#94a3b8" font-size="9">projected net revenue impact before menu rollout</text>
+  </g>
+
+  <!-- Arrow -->
+  <path d="M 680 230 L 740 230" stroke="#f59e0b" stroke-width="2.5"/>
+
+  <!-- Output Actions -->
+  <g transform="translate(740, 80)">
+    <rect x="0" y="0" width="220" height="300" rx="8" fill="#1e293b" stroke="#10b981" stroke-width="1.5"/>
+    <text x="110" y="26" text-anchor="middle" fill="#34d399" font-size="12" font-weight="700">Business Impact</text>
+
+    <text x="15" y="60" fill="#f1f5f9" font-size="11" font-weight="600">Action Cards:</text>
+    <text x="15" y="80" fill="#cbd5e1" font-size="10">• Priority Score (High/Med)</text>
+    <text x="15" y="100" fill="#cbd5e1" font-size="10">• Target Category / Branch</text>
+    <text x="15" y="120" fill="#cbd5e1" font-size="10">• Estimated Net ROI</text>
+    <text x="15" y="140" fill="#cbd5e1" font-size="10">• Empirical Confidence Score</text>
+
+    <text x="15" y="175" fill="#f1f5f9" font-size="11" font-weight="600">Scenario Forecasting:</text>
+    <text x="15" y="195" fill="#cbd5e1" font-size="10">• Baseline vs Simulated Rev</text>
+    <text x="15" y="215" fill="#cbd5e1" font-size="10">• Demand Volume Delta</text>
+    <text x="15" y="235" fill="#cbd5e1" font-size="10">• Waste Savings Delta</text>
+
+    <rect x="15" y="255" width="190" height="35" rx="4" fill="#064e3b" stroke="#059669"/>
+    <text x="110" y="277" text-anchor="middle" fill="#a7f3d0" font-size="10" font-weight="700">Measurable Value Add</text>
+  </g>
+</svg>

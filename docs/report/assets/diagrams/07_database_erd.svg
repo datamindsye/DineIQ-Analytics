@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500" width="100%" height="100%" style="background:#0f172a; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <text x="500" y="32" text-anchor="middle" fill="#f8fafc" font-size="18" font-weight="700">DineIQ Analytics — Relational Database Entity Relationship Overview</text>
+  <text x="500" y="52" text-anchor="middle" fill="#94a3b8" font-size="11.5">PostgreSQL 18 Schema • 11 Domain Tables + Operational &amp; RBAC Tables</text>
+
+  <!-- Left: Core Security & Operations -->
+  <g transform="translate(40, 80)">
+    <rect x="0" y="0" width="260" height="390" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+    <rect x="0" y="0" width="260" height="26" rx="4" fill="#0284c7"/>
+    <text x="130" y="18" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="700">SECURITY &amp; SYSTEM METADATA</text>
+
+    <rect x="10" y="36" width="240" height="65" rx="4" fill="#0f172a" stroke="#334155"/>
+    <text x="20" y="54" fill="#38bdf8" font-size="11" font-weight="700">users (PK: id)</text>
+    <text x="20" y="70" fill="#94a3b8" font-size="9.5">username, email, hashed_password</text>
+    <text x="20" y="85" fill="#94a3b8" font-size="9.5">full_name, is_active, is_superuser</text>
+
+    <rect x="10" y="108" width="240" height="60" rx="4" fill="#0f172a" stroke="#334155"/>
+    <text x="20" y="126" fill="#38bdf8" font-size="11" font-weight="700">roles (PK: id) &amp; user_roles</text>
+    <text x="20" y="142" fill="#94a3b8" font-size="9.5">name: Admin, StoreManager,</text>
+    <text x="20" y="157" fill="#94a3b8" font-size="9.5">DataScientist, Cashier</text>
+
+    <rect x="10" y="175" width="240" height="65" rx="4" fill="#0f172a" stroke="#334155"/>
+    <text x="20" y="193" fill="#38bdf8" font-size="11" font-weight="700">job_runs (PK: id)</text>
+    <text x="20" y="209" fill="#94a3b8" font-size="9.5">job_id, pipeline_type (spark/python)</text>
+    <text x="20" y="224" fill="#94a3b8" font-size="9.5">status, record_counts, duration_sec</text>
+
+    <rect x="10" y="247" width="240" height="65" rx="4" fill="#0f172a" stroke="#334155"/>
+    <text x="20" y="265" fill="#38bdf8" font-size="11" font-weight="700">model_versions (PK: id)</text>
+    <text x="20" y="281" fill="#94a3b8" font-size="9.5">model_name, framework, version</text>
+    <text x="20" y="296" fill="#94a3b8" font-size="9.5">metrics (JSON), is_champion</text>
+
+    <rect x="10" y="319" width="240" height="60" rx="4" fill="#0f172a" stroke="#334155"/>
+    <text x="20" y="337" fill="#38bdf8" font-size="11" font-weight="700">audit_events (PK: id)</text>
+    <text x="20" y="353" fill="#94a3b8" font-size="9.5">user_id, action, resource, timestamp</text>
+  </g>
+
+  <!-- Right: 11 Business Domain Tables -->
+  <g transform="translate(330, 80)">
+    <rect x="0" y="0" width="630" height="390" rx="8" fill="#1e293b" stroke="#10b981" stroke-width="1.5"/>
+    <rect x="0" y="0" width="630" height="26" rx="4" fill="#047857"/>
+    <text x="315" y="18" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="700">11 BUSINESS DOMAIN TABLES</text>
+
+    <!-- Top Row -->
+    <rect x="15" y="36" width="185" height="70" rx="4" fill="#0f172a" stroke="#334155"/>
+    <text x="25" y="54" fill="#34d399" font-size="10.5" font-weight="700">restaurants</text>
+    <text x="25" y="70" fill="#94a3b8" font-size="9">id, name, city, state</text>
+    <text x="25" y="85" fill="#94a3b8" font-size="9">concept, seating_capacity</text>
+
+    <rect x="220" y="36" width="185" height="70" rx="4" fill="#0f172a" stroke="#334155"/>
+    <text x="230" y="54" fill="#34d399" font-size="10.5" font-weight="700">menu_categories</text>
+    <text x="230" y="70" fill="#94a3b8" font-size="9">id, name, department</text>
+    <text x="230" y="85" fill="#94a3b8" font-size="9">display_order</text>
+
+    <rect x="425" y="36" width="190" height="70" rx="4" fill="#0f172a" stroke="#334155"/>
+    <text x="435" y="54" fill="#34d399" font-size="10.5" font-weight="700">menu_items</text>
+    <text x="435" y="70" fill="#94a3b8" font-size="9">id, category_id (FK), name</text>
+    <text x="435" y="85" fill="#94a3b8" font-size="9">base_price, cost, prep_time</text>
+
+    <!-- Middle Row -->
+    <rect x="15" y="120" width="185" height="75" rx="4" fill="#0f172a" stroke="#334155"/>
+    <text x="25" y="138" fill="#34d399" font-size="10.5" font-weight="700">customers</text>
+    <text x="25" y="154" fill="#94a3b8" font-size="9">id, name, email, phone</text>
+    <text x="25" y="169" fill="#94a3b8" font-size="9">loyalty_tier, signup_date</text>
+    <text x="25" y="184" fill="#94a3b8" font-size="9">home_store_id (FK)</text>
+
+    <rect x="220" y="120" width="185" height="75" rx="4" fill="#0f172a" stroke="#334155"/>
+    <text x="230" y="138" fill="#34d399" font-size="10.5" font-weight="700">orders</text>
+    <text x="230" y="154" fill="#94a3b8" font-size="9">id, restaurant_id (FK)</text>
+    <text x="230" y="169" fill="#94a3b8" font-size="9">customer_id (FK - nullable)</text>
+    <text x="230" y="184" fill="#94a3b8" font-size="9">order_datetime, channel</text>
+
+    <rect x="425" y="120" width="190" height="75" rx="4" fill="#0f172a" stroke="#334155"/>
+    <text x="435" y="138" fill="#34d399" font-size="10.5" font-weight="700">order_items</text>
+    <text x="435" y="154" fill="#94a3b8" font-size="9">id, order_id (FK), item_id (FK)</text>
+    <text x="435" y="169" fill="#94a3b8" font-size="9">quantity, unit_price</text>
+    <text x="435" y="184" fill="#94a3b8" font-size="9">promotion_id (FK - nullable)</text>
+
+    <!-- Bottom Row -->
+    <rect x="15" y="210" width="185" height="75" rx="4" fill="#0f172a" stroke="#334155"/>
+    <text x="25" y="228" fill="#34d399" font-size="10.5" font-weight="700">pricing_history (SCD-2)</text>
+    <text x="25" y="244" fill="#94a3b8" font-size="9">id, item_id (FK), price</text>
+    <text x="25" y="259" fill="#94a3b8" font-size="9">valid_from, valid_to</text>
+    <text x="25" y="274" fill="#94a3b8" font-size="9">is_current (Boolean)</text>
+
+    <rect x="220" y="210" width="185" height="75" rx="4" fill="#0f172a" stroke="#334155"/>
+    <text x="230" y="228" fill="#34d399" font-size="10.5" font-weight="700">promotions</text>
+    <text x="230" y="244" fill="#94a3b8" font-size="9">id, name, discount_type</text>
+    <text x="230" y="259" fill="#94a3b8" font-size="9">discount_value, start_date</text>
+    <text x="230" y="274" fill="#94a3b8" font-size="9">end_date, target_category</text>
+
+    <rect x="425" y="210" width="190" height="75" rx="4" fill="#0f172a" stroke="#334155"/>
+    <text x="435" y="228" fill="#34d399" font-size="10.5" font-weight="700">ratings</text>
+    <text x="435" y="244" fill="#94a3b8" font-size="9">id, order_id (FK), customer_id</text>
+    <text x="435" y="259" fill="#94a3b8" font-size="9">rating (1-5), review_text</text>
+    <text x="435" y="274" fill="#94a3b8" font-size="9">sentiment_score, timestamp</text>
+
+    <!-- Sub-bottom row -->
+    <rect x="15" y="298" width="285" height="75" rx="4" fill="#0f172a" stroke="#334155"/>
+    <text x="25" y="316" fill="#34d399" font-size="10.5" font-weight="700">inventory</text>
+    <text x="25" y="332" fill="#94a3b8" font-size="9">id, restaurant_id (FK), item_id (FK)</text>
+    <text x="25" y="347" fill="#94a3b8" font-size="9">stock_level, reorder_point, unit_cost</text>
+    <text x="25" y="362" fill="#94a3b8" font-size="9">last_replenished_datetime</text>
+
+    <rect x="330" y="298" width="285" height="75" rx="4" fill="#0f172a" stroke="#334155"/>
+    <text x="340" y="316" fill="#34d399" font-size="10.5" font-weight="700">wastage (Dual-Path)</text>
+    <text x="340" y="332" fill="#94a3b8" font-size="9">id, restaurant_id (FK), item_id (FK)</text>
+    <text x="340" y="347" fill="#94a3b8" font-size="9">quantity, reason (preparation vs spoiled)</text>
+    <text x="340" y="362" fill="#94a3b8" font-size="9">waste_datetime, estimated_cost</text>
+  </g>
+</svg>

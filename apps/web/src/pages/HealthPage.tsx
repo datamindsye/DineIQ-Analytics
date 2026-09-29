@@ -46,6 +46,7 @@ export const HealthPage: React.FC = () => {
   return (
     <div className="page-container">
       <div className="page-header">
+        <span className="page-eyebrow">Production Telemetry</span>
         <h1 className="page-title">System Health & Verification</h1>
         <p className="page-description">
           Live verification status of backend API, PostgreSQL connection, and environments.
@@ -54,9 +55,9 @@ export const HealthPage: React.FC = () => {
 
       <div className="health-card-container">
         <div className="card">
-          <div className="card-top-action">
-            <h2>Backend Status</h2>
-            <button className="refresh-btn" onClick={fetchHealth} disabled={loading}>
+          <div className="card-top-action" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h2 className="card-title" style={{ margin: 0 }}>Backend Service Readiness</h2>
+            <button className="btn btn-secondary" onClick={fetchHealth} disabled={loading}>
               {loading ? 'Checking...' : 'Refresh Status'}
             </button>
           </div>

@@ -4,7 +4,12 @@ import { useFilters } from '../../context/useFilters';
 import { apiService } from '../../services/api';
 import type { HealthStatus } from '../../types';
 
-export const Header: React.FC = () => {
+export interface HeaderProps {
+  onToggleMobileMenu?: () => void;
+  isMobileMenuOpen?: boolean;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu, isMobileMenuOpen }) => {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const { selectedLocation, setSelectedLocation, options } = useFilters();
   const { user, role, logout } = useAuth();
@@ -36,6 +41,15 @@ export const Header: React.FC = () => {
   return (
     <header className="app-header">
       <div className="header-brand">
+        <button
+          type="button"
+          className="mobile-nav-toggle"
+          onClick={onToggleMobileMenu}
+          aria-label={isMobileMenuOpen ? 'Close navigation drawer' : 'Open navigation drawer'}
+          title={isMobileMenuOpen ? 'Close navigation' : 'Open navigation'}
+        >
+          {isMobileMenuOpen ? '✕' : '☰'}
+        </button>
         <span className="brand-logo">DineIQ</span>
         <span className="brand-subtitle">Analytics Intelligence Arena</span>
       </div>

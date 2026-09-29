@@ -17,7 +17,31 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
   className,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const initializedRef = useRef<boolean>(false);
 
+  // Resize listener & unmount cleanup
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+
+    const handleResize = () => {
+      if (element && initializedRef.current) {
+        Plotly.Plots.resize(element);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (element && initializedRef.current) {
+        Plotly.purge(element);
+        initializedRef.current = false;
+      }
+    };
+  }, []);
+
+  // Update chart using Plotly.react (in-place diff instead of full destroy/recreate)
   useEffect(() => {
     const element = containerRef.current;
     if (!element) return;
@@ -39,20 +63,8 @@ export const PlotlyChart: React.FC<PlotlyChartProps> = ({
       ...config,
     };
 
-    Plotly.newPlot(element, data, defaultLayout, defaultConfig);
-
-    const handleResize = () => {
-      if (element) {
-        Plotly.Plots.resize(element);
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      Plotly.purge(element);
-    };
+    Plotly.react(element, data, defaultLayout, defaultConfig);
+    initializedRef.current = true;
   }, [data, layout, config]);
 
   return (

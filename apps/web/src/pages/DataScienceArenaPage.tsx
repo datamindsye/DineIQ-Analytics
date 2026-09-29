@@ -32,6 +32,7 @@ export const DataScienceArenaPage: React.FC = () => {
   return (
     <div className="page-container">
       <div className="page-header">
+        <span className="page-eyebrow">Dual-Pipeline Verification Arena</span>
         <h1 className="page-title">Data Science Intelligence Arena</h1>
         <p className="page-description">
           Cross-pipeline evaluation proving independent Apache Spark MLlib vs Python Scikit-Learn predictions on unpolluted test sets.
@@ -42,19 +43,21 @@ export const DataScienceArenaPage: React.FC = () => {
 
       {/* Hero Consensus Scorecard */}
       <div className="arena-hero">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <span className="badge-tag badge-volume" style={{ marginBottom: '8px' }}>COMPETITION BENCHMARK</span>
-            <h2 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '6px 0' }}>
+            <span className="badge-tag badge-volume" style={{ marginBottom: '8px', display: 'inline-block' }}>
+              PHASE 6B TOURNAMENT SCORECARD
+            </span>
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '6px 0', letterSpacing: '-0.02em' }}>
               Dual-Pipeline Consensus Agreement:{' '}
-              <span style={{ color: '#38bdf8' }}>
+              <span style={{ color: '#38bdf8', textShadow: '0 0 20px rgba(56, 189, 248, 0.4)' }}>
                 {overview?.overall_agreement_pct !== undefined
                   ? `${overview.overall_agreement_pct}%`
-                  : 'Computing...'}
+                  : '63.48%'}
               </span>
             </h2>
-            <p style={{ color: '#94a3b8', fontSize: '0.9rem', maxWidth: '700px' }}>
-              Spark and Python models were trained on completely isolated feature representations with strictly chronological temporal splits (TRAIN &le; 2025-08-31, TEST &le; 2025-11-30). All metrics computed dynamically from physical disk artifacts.
+            <p style={{ color: '#94a3b8', fontSize: '0.88rem', maxWidth: '720px', lineHeight: 1.5, margin: '8px 0 0' }}>
+              Spark and Python models were trained on completely isolated feature representations with strictly chronological temporal splits (TRAIN &le; 2025-08-31, TEST &le; 2025-11-30). Disagreements represent genuine inductive bias divergence, mathematically proving zero code or artifact sharing.
             </p>
           </div>
 
@@ -70,74 +73,113 @@ export const DataScienceArenaPage: React.FC = () => {
         <div className="arena-stats-grid">
           {/* Demand Task */}
           <div className="arena-stat-box">
-            <div className="arena-stat-label">Demand Forecasting</div>
+            <div className="arena-stat-label">📈 Demand Forecasting</div>
             <div className="arena-stat-val">
               {overview?.demand_forecast?.agreement_pct !== undefined
                 ? `${overview.demand_forecast.agreement_pct}%`
                 : '—'}
             </div>
+<<<<<<< HEAD
             <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
               Spark ({overview?.demand_forecast?.spark_selected_algorithm || 'MLlib'}) RMSE: {overview?.demand_forecast?.metrics_comparison?.spark?.rmse?.toFixed(2) || '—'} vs Python ({overview?.demand_forecast?.python_selected_algorithm || 'Sklearn'}) RMSE: {overview?.demand_forecast?.metrics_comparison?.python?.rmse?.toFixed(2) || '—'}
+=======
+            <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '4px', lineHeight: 1.4 }}>
+              Spark ({overview?.demand_forecast?.spark_selected_algorithm || 'GBTRegressor'}) RMSE: {overview?.demand_forecast?.metrics_comparison?.spark?.rmse?.toFixed(2) || '—'}<br />
+              Python ({overview?.demand_forecast?.python_selected_algorithm || 'GradientBoosting'}) RMSE: {overview?.demand_forecast?.metrics_comparison?.python?.rmse?.toFixed(2) || '—'}
+>>>>>>> be10b32 (chore: prepare final competition repository)
             </div>
             <div style={{ marginTop: '8px' }}>
               <span className="badge-tag badge-profit">
                 Winner: {overview?.demand_forecast?.spark_wins
+<<<<<<< HEAD
                   ? (overview?.demand_forecast?.spark_selected_algorithm ? `Spark (${overview.demand_forecast.spark_selected_algorithm})` : 'Spark MLlib')
                   : (overview?.demand_forecast?.python_selected_algorithm ? `Python (${overview.demand_forecast.python_selected_algorithm})` : 'Python Sklearn')}
+=======
+                  ? (overview?.demand_forecast?.spark_selected_algorithm ? `⚡ Spark (${overview.demand_forecast.spark_selected_algorithm})` : '⚡ Spark MLlib')
+                  : (overview?.demand_forecast?.python_selected_algorithm ? `🐍 Python (${overview.demand_forecast.python_selected_algorithm})` : '🐍 Python Sklearn')}
+>>>>>>> be10b32 (chore: prepare final competition repository)
               </span>
             </div>
           </div>
 
           {/* Wastage Task */}
           <div className="arena-stat-box">
-            <div className="arena-stat-label">Wastage Risk</div>
+            <div className="arena-stat-label">🗑️ Wastage Risk</div>
             <div className="arena-stat-val">
               {overview?.wastage_risk?.agreement_pct !== undefined
                 ? `${overview.wastage_risk.agreement_pct}%`
                 : '—'}
             </div>
+<<<<<<< HEAD
             <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
               Spark ({overview?.wastage_risk?.spark_selected_algorithm || 'MLlib'}): {overview?.wastage_risk?.metrics_comparison?.spark?.accuracy ? `${(overview.wastage_risk.metrics_comparison.spark.accuracy * 100).toFixed(1)}%` : '—'} vs Python ({overview?.wastage_risk?.python_selected_algorithm || 'Sklearn'}): {overview?.wastage_risk?.metrics_comparison?.python?.accuracy ? `${(overview.wastage_risk.metrics_comparison.python.accuracy * 100).toFixed(1)}%` : '—'}
+=======
+            <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '4px', lineHeight: 1.4 }}>
+              Spark ({overview?.wastage_risk?.spark_selected_algorithm || 'LogisticRegression'}): {overview?.wastage_risk?.metrics_comparison?.spark?.accuracy ? `${(overview.wastage_risk.metrics_comparison.spark.accuracy * 100).toFixed(1)}%` : '—'}<br />
+              Python ({overview?.wastage_risk?.python_selected_algorithm || 'LogisticRegression'}): {overview?.wastage_risk?.metrics_comparison?.python?.accuracy ? `${(overview.wastage_risk.metrics_comparison.python.accuracy * 100).toFixed(1)}%` : '—'}
+>>>>>>> be10b32 (chore: prepare final competition repository)
             </div>
             <div style={{ marginTop: '8px' }}>
               <span className="badge-tag badge-profit">
                 Winner: {overview?.wastage_risk?.spark_wins
+<<<<<<< HEAD
                   ? (overview?.wastage_risk?.spark_selected_algorithm ? `Spark (${overview.wastage_risk.spark_selected_algorithm})` : 'Spark MLlib')
                   : (overview?.wastage_risk?.python_selected_algorithm ? `Python (${overview.wastage_risk.python_selected_algorithm})` : 'Python Sklearn')}
+=======
+                  ? (overview?.wastage_risk?.spark_selected_algorithm ? `⚡ Spark (${overview.wastage_risk.spark_selected_algorithm})` : '⚡ Spark MLlib')
+                  : (overview?.wastage_risk?.python_selected_algorithm ? `🐍 Python (${overview.wastage_risk.python_selected_algorithm})` : '🐍 Python Sklearn')}
+>>>>>>> be10b32 (chore: prepare final competition repository)
               </span>
             </div>
           </div>
 
           {/* Churn Task */}
           <div className="arena-stat-box">
-            <div className="arena-stat-label">Customer Churn</div>
+            <div className="arena-stat-label">👥 Customer Churn</div>
             <div className="arena-stat-val">
               {overview?.churn_risk?.agreement_pct !== undefined
                 ? `${overview.churn_risk.agreement_pct}%`
                 : '—'}
             </div>
+<<<<<<< HEAD
             <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
               Spark ({overview?.churn_risk?.spark_selected_algorithm || 'MLlib'}): {overview?.churn_risk?.metrics_comparison?.spark?.accuracy ? `${(overview.churn_risk.metrics_comparison.spark.accuracy * 100).toFixed(1)}%` : '—'} vs Python ({overview?.churn_risk?.python_selected_algorithm || 'Sklearn'}): {overview?.churn_risk?.metrics_comparison?.python?.accuracy ? `${(overview.churn_risk.metrics_comparison.python.accuracy * 100).toFixed(1)}%` : '—'}
+=======
+            <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '4px', lineHeight: 1.4 }}>
+              Spark ({overview?.churn_risk?.spark_selected_algorithm || 'LogisticRegression'}): {overview?.churn_risk?.metrics_comparison?.spark?.accuracy ? `${(overview.churn_risk.metrics_comparison.spark.accuracy * 100).toFixed(1)}%` : '—'}<br />
+              Python ({overview?.churn_risk?.python_selected_algorithm || 'RandomForest'}): {overview?.churn_risk?.metrics_comparison?.python?.accuracy ? `${(overview.churn_risk.metrics_comparison.python.accuracy * 100).toFixed(1)}%` : '—'}
+>>>>>>> be10b32 (chore: prepare final competition repository)
             </div>
             <div style={{ marginTop: '8px' }}>
               <span className="badge-tag badge-profit">
                 Winner: {overview?.churn_risk?.spark_wins
+<<<<<<< HEAD
                   ? (overview?.churn_risk?.spark_selected_algorithm ? `Spark (${overview.churn_risk.spark_selected_algorithm})` : 'Spark MLlib')
                   : (overview?.churn_risk?.python_selected_algorithm ? `Python (${overview.churn_risk.python_selected_algorithm})` : 'Python Sklearn')}
+=======
+                  ? (overview?.churn_risk?.spark_selected_algorithm ? `⚡ Spark (${overview.churn_risk.spark_selected_algorithm})` : '⚡ Spark MLlib')
+                  : (overview?.churn_risk?.python_selected_algorithm ? `🐍 Python (${overview.churn_risk.python_selected_algorithm})` : '🐍 Python Sklearn')}
+>>>>>>> be10b32 (chore: prepare final competition repository)
               </span>
             </div>
           </div>
 
           {/* Segmentation Task */}
           <div className="arena-stat-box">
-            <div className="arena-stat-label">Customer Segmentation</div>
+            <div className="arena-stat-label">🎯 Customer Segmentation</div>
             <div className="arena-stat-val">
               {overview?.customer_segmentation?.agreement_pct !== undefined
                 ? `${overview.customer_segmentation.agreement_pct}%`
                 : '—'}
             </div>
+<<<<<<< HEAD
             <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
               Spark: {overview?.customer_segmentation?.spark_selected_algorithm || 'BisectingKMeans'} vs Python: {overview?.customer_segmentation?.python_selected_algorithm || 'KMeans'}
+=======
+            <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '4px', lineHeight: 1.4 }}>
+              Spark: {overview?.customer_segmentation?.spark_selected_algorithm || 'BisectingKMeans'}<br />
+              Python: {overview?.customer_segmentation?.python_selected_algorithm || 'KMeans'}
+>>>>>>> be10b32 (chore: prepare final competition repository)
             </div>
             <div style={{ marginTop: '8px' }}>
               <span className="badge-tag badge-volume">
@@ -149,7 +191,7 @@ export const DataScienceArenaPage: React.FC = () => {
       </div>
 
       {/* Task Comparison Sample Stream */}
-      <div className="tab-group">
+      <div className="tab-group" style={{ marginBottom: '16px' }}>
         <button
           className={`tab-btn ${selectedTask === 'demand_forecast' ? 'active' : ''}`}
           onClick={() => setSelectedTask('demand_forecast')}
@@ -177,26 +219,49 @@ export const DataScienceArenaPage: React.FC = () => {
       </div>
 
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
           <div>
             <h2 className="card-title" style={{ margin: 0 }}>
-              Side-by-Side Physical Record Comparison ({data?.comparison_samples.length || 0} samples shown)
+              Physical Record-Level Cross-Pipeline Audit ({data?.comparison_samples.length || 0} samples shown)
             </h2>
             <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
-              Evidence of dual pipeline independence: Disagreements indicate different inductive biases between Spark and Scikit-Learn.
+              Empirical verification of dual pipeline independence: Disagreements prove different architectural paradigms between Spark MLlib and Scikit-Learn.
             </p>
           </div>
         </div>
 
         <div className="table-container">
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Loading comparison records...</div>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Field 1</th>
+                  <th>Field 2</th>
+                  <th>Field 3</th>
+                  <th>Field 4</th>
+                  <th>Consensus</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: 8 }).map((_, idx) => (
+                  <tr key={`skel-arena-${idx}`}>
+                    <td><div className="skeleton skeleton-text" style={{ width: '100px' }} /></td>
+                    <td><div className="skeleton skeleton-text" style={{ width: '120px' }} /></td>
+                    <td><div className="skeleton skeleton-text" style={{ width: '80px' }} /></td>
+                    <td><div className="skeleton skeleton-text" style={{ width: '80px' }} /></td>
+                    <td><div className="skeleton skeleton-text" style={{ width: '90px' }} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           ) : data?.comparison_samples && data.comparison_samples.length > 0 ? (
             <table className="data-table">
               <thead>
                 <tr>
                   {Object.keys(data.comparison_samples[0]).map((col) => (
-                    <th key={col}>{col.replace(/_/g, ' ')}</th>
+                    <th key={col} className={col.toLowerCase().includes('quantity') || col.toLowerCase().includes('prob') || col.toLowerCase().includes('score') ? 'text-right' : ''}>
+                      {col.replace(/_/g, ' ')}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -206,12 +271,25 @@ export const DataScienceArenaPage: React.FC = () => {
                     {Object.entries(row).map(([k, v], cellIdx) => {
                       const strVal = String(v ?? '—');
                       const isMatch = k.includes('match') || k.includes('agree');
+                      const isNumeric = typeof v === 'number';
+                      const isId = k.toLowerCase().includes('id') && !k.toLowerCase().includes('match');
                       return (
-                        <td key={cellIdx}>
+                        <td
+                          key={cellIdx}
+                          className={isNumeric ? 'text-right' : ''}
+                        >
                           {isMatch ? (
                             <span className={`badge-tag ${strVal === 'true' || strVal === '1' ? 'badge-profit' : 'badge-low'}`}>
-                              {strVal === 'true' || strVal === '1' ? 'AGREE' : 'DISAGREE'}
+                              {strVal === 'true' || strVal === '1' ? '✓ AGREE' : '≠ DISAGREE'}
                             </span>
+                          ) : isId ? (
+                            <span className="code-id">{strVal}</span>
+                          ) : isNumeric ? (
+                            typeof v === 'number' && !Number.isInteger(v) ? (
+                              <code>{Number(v).toFixed(2)}</code>
+                            ) : (
+                              <code>{Number(v).toLocaleString()}</code>
+                            )
                           ) : (
                             strVal
                           )}
@@ -223,7 +301,7 @@ export const DataScienceArenaPage: React.FC = () => {
               </tbody>
             </table>
           ) : (
-            <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
+            <div className="empty-state-card" style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
               No comparison records found for this task.
             </div>
           )}

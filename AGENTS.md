@@ -25,8 +25,9 @@ python -m pytest tests/
 # Backend development server
 uvicorn apps.api.main:app --reload --host 0.0.0.0 --port 8000
 
-# Database migration
+# Database migration & evaluation seed
 alembic upgrade head
+python -m packages.db.seed
 
 # Spark analytical pipeline execution (materializes 12 marts)
 python -m packages.pipeline_spark.runner

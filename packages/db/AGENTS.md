@@ -24,6 +24,9 @@ alembic upgrade head
 
 # Rollback last migration
 alembic downgrade -1
+
+# Seed standard security roles and evaluation users
+python -m packages.db.seed
 ```
 
 ## Conventions
